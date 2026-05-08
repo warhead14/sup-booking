@@ -1,0 +1,121 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --border-color: #e2e8f0;
+  --card-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+.dark {
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --border-color: #334155;
+  --card-shadow: none;
+  color-scheme: dark;
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+  html, body {
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100%;
+  }
+  body {
+    -webkit-tap-highlight-color: transparent;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    @apply transition-colors duration-200;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--text-primary);
+  }
+
+  /* force native date input to never exceed parent on iOS/Android */
+  input[type="date"] {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+    padding-right: 14px;
+  }
+
+  /* Component overrides for dark mode using variables */
+  .bg-white {
+    background-color: var(--bg-secondary) !important;
+  }
+  .bg-gray-50, .bg-orange-50\/50, .bg-amber-50, .bg-teal-50, .bg-green-50\/50 {
+    background-color: var(--bg-secondary) !important;
+    opacity: 0.95;
+  }
+  .bg-gray-100, .bg-slate-100 {
+    background-color: var(--bg-primary) !important;
+  }
+  .bg-gray-200 {
+    background-color: var(--border-color) !important;
+  }
+  .border, .border-gray-100, .border-gray-200, .border-slate-200, .border-teal-100, .border-orange-100, .border-amber-100, .border-green-100 {
+    border-color: var(--border-color) !important;
+  }
+  .text-gray-900, .text-gray-800, .text-gray-700, .text-gray-600, .text-slate-900, .text-slate-800, .text-black, .text-slate-950 {
+    color: var(--text-primary) !important;
+  }
+  .text-gray-500, .text-gray-400, .text-slate-500, .text-slate-400 {
+    color: var(--text-secondary) !important;
+  }
+
+  /* Global dark mode overrides to catch any stray black text */
+  .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6, .dark p, .dark span, .dark div, .dark b, .dark strong {
+    color: inherit;
+  }
+
+  input, textarea, select {
+    background-color: var(--bg-secondary) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+  }
+  .shadow-sm, .shadow {
+    box-shadow: var(--card-shadow) !important;
+  }
+
+  /* Specific fix for calendar dates and items that might stay black */
+  .dark .bg-white div, .dark .bg-white span {
+    color: var(--text-primary);
+  }
+  .dark .bg-white .text-gray-400, .dark .bg-white .text-gray-500 {
+    color: var(--text-secondary);
+  }
+}
+
+@layer utilities {
+  .bg-summer-mesh {
+    background-color: #f0f9ff;
+    background-image: 
+      radial-gradient(at 0% 0%, hsla(199, 89%, 92%, 1) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, hsla(175, 80%, 92%, 1) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, hsla(210, 80%, 95%, 1) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, hsla(45, 80%, 94%, 0.6) 0px, transparent 50%);
+  }
+
+  .dark .bg-summer-mesh {
+    background-color: #0f172a;
+    background-image: 
+      radial-gradient(at 0% 0%, hsla(210, 80%, 15%, 1) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, hsla(180, 80%, 10%, 1) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, hsla(220, 80%, 12%, 1) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, hsla(200, 80%, 8%, 1) 0px, transparent 50%);
+  }
+}
