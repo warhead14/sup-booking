@@ -6,6 +6,8 @@ export const config = {
   adminPassword: process.env.ADMIN_PASSWORD || 'admin',
   telegram: {
     botToken: process.env.TELEGRAM_BOT_TOKEN || '',
-    chatId: process.env.TELEGRAM_CHAT_ID || ''
+    chatId: process.env.TELEGRAM_CHAT_ID || '',
+    relayUrl: process.env.TELEGRAM_RELAY_URL || 'https://functions.yandexcloud.net/d4envgm9e4kktq5tugqp'
   }
+
 };
