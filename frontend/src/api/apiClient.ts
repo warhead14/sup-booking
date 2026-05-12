@@ -232,5 +232,14 @@ export const apiClient = {
     if (!res.ok) throw new Error('Ошибка загрузки статистики продаж');
     return res.json();
   },
+
+  deleteClient: async (password: string, id: string): Promise<void> => {
+    const res = await fetch(`${API_BASE}/admin/clients/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: { 'x-admin-password': password }
+    });
+    if (!res.ok) throw new Error('Ошибка удаления клиента');
+  },
 };
+
 

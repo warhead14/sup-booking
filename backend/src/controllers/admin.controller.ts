@@ -396,8 +396,10 @@ export class AdminController {
           saleCount: Number(r.sale_count),
           totalSpent: Math.round(totalSpent * 100) / 100,
           lastVisit: lastActivity, // Use unified last activity date
+          lastRental: r.last_rental || null,
         };
       });
+
 
       // Filter by search query — name, phone, tgUsername
       if (q && q.trim()) {
@@ -492,4 +494,48 @@ export class AdminController {
       next(err);
     }
   }
+
+  static async deleteClient(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      const db = await getDb();
+
+      // Start transaction to ensure atomicity
+      await db.run('BEGIN TRANSACTION');
+
+      try {
+        // 1. Delete from sale_items for sales belonging to this client
+        await db.run(
+          'DELETE FROM sale_items WHERE sale_id IN (SELECT id FROM sales WHERE client_id = ?)',
+          [id]
+        );
+
+        // 2. Delete from sales
+        await db.run('DELETE FROM sales WHERE client_id = ?', [id]);
+
+        // 3. Delete from rentals
+        await db.run('DELETE FROM rentals WHERE client_id = ?', [id]);
+
+        // 4. Delete from bookings
+        await db.run('DELETE FROM bookings WHERE client_id = ?', [id]);
+
+        // 5. Delete from clients
+        const result = await db.run('DELETE FROM clients WHERE id = ?', [id]);
+
+        if (!result.changes) {
+          await db.run('ROLLBACK');
+          return res.status(404).json({ error: 'Client not found' });
+        }
+
+        await db.run('COMMIT');
+        res.json({ success: true });
+      } catch (err) {
+        await db.run('ROLLBACK');
+        throw err;
+      }
+    } catch (err) {
+      next(err);
+    }
+  }
 }
+

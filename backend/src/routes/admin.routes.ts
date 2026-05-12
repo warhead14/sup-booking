@@ -24,6 +24,8 @@ router.get('/stats/export', AdminController.exportStats);
 router.get('/clients', AdminController.getClients);
 router.get('/clients/:id', AdminController.getClientProfile);
 router.patch('/clients/:id/note', AdminController.updateClientNote);
+router.delete('/clients/:id', AdminController.deleteClient);
+
 
 // Products
 router.get('/products', SalesController.getProducts);

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { apiClient } from '../../api/apiClient';
 import { formatDateUI } from '../../utils/dateFormatter';
-import { Search, ArrowLeft, Phone, User, Waves, ChevronRight, ArrowUpDown, StickyNote, Check, ShoppingBag } from 'lucide-react';
+import { Search, ArrowLeft, Phone, User, Waves, ChevronRight, ArrowUpDown, StickyNote, Check, ShoppingBag, Trash2 } from 'lucide-react';
 
 type Client = {
   id: string;
@@ -13,6 +13,7 @@ type Client = {
   saleCount: number;
   totalSpent: number;
   lastVisit: string | null;
+  lastRental: string | null;
 };
 
 type ClientProfile = {
@@ -31,7 +32,7 @@ type ClientProfile = {
   sales: any[];
 };
 
-type SortKey = 'lastVisit_desc' | 'lastVisit_asc' | 'totalSpent_desc' | 'totalSpent_asc' | 'rentalCount_desc';
+type SortKey = 'totalSpent_desc' | 'lastRental_desc';
 
 type Props = { password: string; initialClientId?: string | null; onClearInitialClient?: () => void };
 
@@ -45,21 +46,19 @@ function getPlural(n: number, one: string, two: string, five: string) {
 }
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
-  { value: 'lastVisit_desc',   label: 'Активность ↓' },
-  { value: 'lastVisit_asc',    label: 'Активность ↑' },
-  { value: 'totalSpent_desc',  label: 'Доход ↓' },
-  { value: 'totalSpent_asc',   label: 'Доход ↑' },
-  { value: 'rentalCount_desc', label: 'По аренде ↓' },
+  { value: 'totalSpent_desc',  label: 'По доходу' },
+  { value: 'lastRental_desc',  label: 'По последней аренде' },
 ];
 
 function sortClients(clients: Client[], sortKey: SortKey): Client[] {
   return [...clients].sort((a, b) => {
     switch (sortKey) {
-      case 'lastVisit_desc':   return (b.lastVisit || '').localeCompare(a.lastVisit || '');
-      case 'lastVisit_asc':    return (a.lastVisit || '').localeCompare(b.lastVisit || '');
       case 'totalSpent_desc':  return b.totalSpent - a.totalSpent;
-      case 'totalSpent_asc':   return a.totalSpent - b.totalSpent;
-      case 'rentalCount_desc': return b.rentalCount - a.rentalCount;
+      case 'lastRental_desc':
+        if (!a.lastRental && !b.lastRental) return 0;
+        if (!a.lastRental) return 1;
+        if (!b.lastRental) return -1;
+        return b.lastRental.localeCompare(a.lastRental);
       default: return 0;
     }
   });
@@ -151,7 +150,7 @@ const NoteEditor: React.FC<{
 export const ClientsTab: React.FC<Props> = ({ password, initialClientId, onClearInitialClient }) => {
   const [clients, setClients] = useState<Client[]>([]);
   const [search, setSearch] = useState('');
-  const [sortKey, setSortKey] = useState<SortKey>('lastVisit_desc');
+  const [sortKey, setSortKey] = useState<SortKey>('totalSpent_desc');
   const [showSort, setShowSort] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -207,6 +206,19 @@ export const ClientsTab: React.FC<Props> = ({ password, initialClientId, onClear
     setSelectedId(null);
     setProfile(null);
   };
+
+  const handleDeleteClient = async (id: string) => {
+    if (!window.confirm('Вы уверены, что хотите удалить клиента? Все его заказы, аренды и статистика будут безвозвратно удалены.')) {
+      return;
+    }
+    try {
+      await apiClient.deleteClient(password, id);
+      setClients(prev => prev.filter(c => c.id !== id));
+    } catch (e: any) {
+      alert(e.message || 'Не удалось удалить клиента');
+    }
+  };
+
 
   // ─── Profile View ───────────────────────────────────────────────────────────
   if (selectedId) {
@@ -453,7 +465,18 @@ export const ClientsTab: React.FC<Props> = ({ password, initialClientId, onClear
                 </div>
               </div>
 
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteClient(c.id);
+                }}
+                className="p-2 text-gray-300 hover:text-red-500 rounded-xl active:bg-gray-100 transition-colors"
+              >
+                <Trash2 size={16} />
+              </button>
+
               <ChevronRight size={18} className="text-gray-200 shrink-0" />
+
             </button>
           );
         })}
