@@ -633,7 +633,10 @@ export class AdminController {
       // Handle new client creation
       if (action === 'new_client') {
         newClientId = crypto.randomUUID();
-        const norm = newPhone ? normalizePhone(newPhone) : '';
+        let norm = newPhone ? normalizePhone(newPhone) : '';
+        if (!norm) {
+          norm = `empty-${crypto.randomUUID()}`;
+        }
         await db.run(
           `INSERT INTO clients (id, name, phone, phone_normalized, telegram_username, note)
            VALUES (?, ?, ?, ?, '', '')`,
