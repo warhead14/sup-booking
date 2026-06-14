@@ -10,7 +10,7 @@ export function normalizePhone(phone: string): string {
   // Strip everything except digits
   const digits = phone.replace(/\D/g, '');
 
-  if (digits.length === 0) return '';
+  if (digits.length < 10) return '';
 
   // 10 digits starting with 9 → prepend 7
   if (digits.length === 10 && digits.startsWith('9')) {

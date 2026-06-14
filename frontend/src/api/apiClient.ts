@@ -179,6 +179,18 @@ export const apiClient = {
     if (!res.ok) throw new Error('Ошибка сохранения примечания');
   },
 
+  splitRecord: async (password: string, clientId: string, data: any): Promise<any> => {
+    const res = await fetch(`${API_BASE}/admin/clients/${encodeURIComponent(clientId)}/split-record`, {
+      method: 'POST',
+      headers: { 'x-admin-password': password, 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    let result;
+    try { result = await res.json(); } catch(e){}
+    if (!res.ok) throw new Error(result?.error || 'Ошибка разделения записи');
+    return result;
+  },
+
   // ── Products ──────────────────────────────────────────────────────────────
   getProducts: async (password: string): Promise<any[]> => {
     const res = await fetch(`${API_BASE}/admin/products`, {

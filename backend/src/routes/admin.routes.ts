@@ -25,6 +25,7 @@ router.get('/stats/export', AdminController.exportStats);
 router.get('/clients', AdminController.getClients);
 router.get('/clients/:id', AdminController.getClientProfile);
 router.patch('/clients/:id/note', AdminController.updateClientNote);
+router.post('/clients/:id/split-record', AdminController.splitRecord);
 router.delete('/clients/:id', AdminController.deleteClient);
 
 

@@ -30,6 +30,7 @@ type ClientProfile = {
   lastVisit: string | null;
   rentals: any[];
   sales: any[];
+  bookings?: any[];
 };
 
 type SortKey = 'totalSpent_desc' | 'lastRental_desc';
@@ -146,6 +147,111 @@ const NoteEditor: React.FC<{
   );
 };
 
+
+
+// ─── Split Record Modal ───────────────────────────────────────────────────────
+const SplitRecordModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  record: any;
+  recordType: 'booking' | 'rental' | 'sale';
+  password: string;
+  currentClientId: string;
+  onSuccess: (newClientId: string) => void;
+}> = ({ isOpen, onClose, record, recordType, password, currentClientId, onSuccess }) => {
+  const [action, setAction] = useState<'new_client'|'existing_client'>('new_client');
+  const [newName, setNewName] = useState('');
+  const [newPhone, setNewPhone] = useState('');
+  const [targetClientId, setTargetClientId] = useState('');
+  const [clients, setClients] = useState<Client[]>([]);
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setNewName(record?.customer_name || '');
+      setNewPhone(record?.customer_phone || '');
+      setAction('new_client');
+      setTargetClientId('');
+      setSearch('');
+    }
+  }, [isOpen, record]);
+
+  useEffect(() => {
+    if (isOpen && action === 'existing_client') {
+      apiClient.getClients(password, search).then(setClients).catch(console.error);
+    }
+  }, [isOpen, action, search, password]);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    try {
+      const res = await apiClient.splitRecord(password, currentClientId, {
+        recordType,
+        recordId: record.id,
+        action,
+        targetClientId: action === 'existing_client' ? targetClientId : undefined,
+        newName: action === 'new_client' ? newName : undefined,
+        newPhone: action === 'new_client' ? newPhone : undefined,
+      });
+      onSuccess(res.newClientId);
+      onClose();
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-[100] flex items-end sm:items-center justify-center p-4">
+      <div className="bg-white rounded-3xl w-full max-w-md p-6 animate-in slide-in-from-bottom-4 shadow-xl">
+        <h3 className="text-xl font-black text-gray-900 mb-4">Отвязать запись</h3>
+        
+        <div className="flex gap-2 mb-4 bg-gray-100 p-1 rounded-xl">
+          <button onClick={() => setAction('new_client')} className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${action === 'new_client' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>В нового клиента</button>
+          <button onClick={() => setAction('existing_client')} className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${action === 'existing_client' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>К существующему</button>
+        </div>
+
+        {action === 'new_client' ? (
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs font-bold text-gray-400 mb-1 block">Имя нового клиента</label>
+              <input placeholder="Имя" value={newName} onChange={e => setNewName(e.target.value)} className="w-full p-3 bg-gray-50 border rounded-xl outline-none focus:border-teal-500 transition-colors text-sm" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-400 mb-1 block">Телефон</label>
+              <input placeholder="Телефон" value={newPhone} onChange={e => setNewPhone(e.target.value)} className="w-full p-3 bg-gray-50 border rounded-xl outline-none focus:border-teal-500 transition-colors text-sm" />
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <input placeholder="Поиск клиента..." value={search} onChange={e => setSearch(e.target.value)} className="w-full p-3 bg-gray-50 border rounded-xl outline-none focus:border-teal-500 text-sm mb-2" />
+            <div className="max-h-48 overflow-y-auto border rounded-xl bg-gray-50/50">
+              {clients.filter(c => c.id !== currentClientId).map(c => (
+                <div key={c.id} onClick={() => setTargetClientId(c.id)} className={`p-3 border-b border-gray-100 last:border-0 cursor-pointer transition-colors ${targetClientId === c.id ? 'bg-teal-50 border-teal-200' : 'hover:bg-gray-100'}`}>
+                  <div className={`font-bold text-sm ${targetClientId === c.id ? 'text-teal-900' : 'text-gray-800'}`}>{c.name}</div>
+                  <div className={`text-xs ${targetClientId === c.id ? 'text-teal-600' : 'text-gray-500'}`}>{c.phone}</div>
+                </div>
+              ))}
+              {clients.filter(c => c.id !== currentClientId).length === 0 && (
+                <div className="p-4 text-center text-xs text-gray-400">Никто не найден</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-3 mt-6">
+          <button onClick={onClose} className="flex-1 py-3.5 text-gray-500 font-bold bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded-xl transition-colors">Отмена</button>
+          <button onClick={handleSubmit} disabled={loading || (action === 'existing_client' && !targetClientId)} className="flex-1 py-3.5 bg-teal-500 text-white font-bold rounded-xl disabled:opacity-50 shadow-md shadow-teal-100 active:scale-95 transition-all">Перенести</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 export const ClientsTab: React.FC<Props> = ({ password, initialClientId, onClearInitialClient, onAddRental }) => {
   const [clients, setClients] = useState<Client[]>([]);
@@ -160,6 +266,17 @@ export const ClientsTab: React.FC<Props> = ({ password, initialClientId, onClear
   const [profile, setProfile] = useState<ClientProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileNote, setProfileNote] = useState('');
+
+  // Split Modal
+  const [splitModalOpen, setSplitModalOpen] = useState(false);
+  const [splitRecord, setSplitRecord] = useState<any>(null);
+  const [splitRecordType, setSplitRecordType] = useState<'booking'|'rental'|'sale'>('rental');
+
+  const openSplitModal = (record: any, type: 'booking'|'rental'|'sale') => {
+    setSplitRecord(record);
+    setSplitRecordType(type);
+    setSplitModalOpen(true);
+  };
 
   const loadClients = useCallback(async () => {
     setLoading(true);
@@ -311,9 +428,43 @@ export const ClientsTab: React.FC<Props> = ({ password, initialClientId, onClear
 
         {/* Tabs for History */}
         <div className="flex flex-col gap-4">
+          {/* Bookings History */}
+          {profile.bookings && profile.bookings.length > 0 && (
+            <div className="flex flex-col gap-2 mt-2">
+              <div className="flex items-center gap-2 text-gray-500 font-black text-xs uppercase tracking-wider px-1">
+                <StickyNote size={16} className="text-blue-500" /> История броней
+              </div>
+              <div className="flex flex-col gap-2">
+                {profile.bookings.map((b: any) => (
+                  <div key={b.id} className="bg-white rounded-2xl border p-4 shadow-sm">
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-sm text-gray-800">{formatDateUI(b.start_date)}</div>
+                        <div className="text-[10px] text-gray-400 font-medium truncate mt-0.5">
+                          {b.quantity} сапов · {b.pickup_time}
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="font-black text-sm text-blue-600">{b.total_price.toLocaleString('ru')} ₽</div>
+                        <div className="text-[9px] text-gray-300 font-black uppercase mt-0.5">
+                          {b.status === 'issued' ? 'Выдана' : b.status === 'cancelled' ? 'Отменена' : 'Ожидает'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-gray-50 flex justify-end">
+                      <button onClick={() => openSplitModal(b, 'booking')} className="flex items-center gap-1 text-[10px] font-bold text-red-400 hover:text-red-600 transition-colors uppercase">
+                        ✂️ Отвязать
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Rentals History */}
           {profile.rentals.length > 0 && (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 mt-2">
               <div className="flex items-center gap-2 text-gray-500 font-black text-xs uppercase tracking-wider px-1">
                 <Waves size={16} className="text-orange-500" /> История аренд
               </div>
@@ -326,19 +477,26 @@ export const ClientsTab: React.FC<Props> = ({ password, initialClientId, onClear
                   const isReturned = r.status === 'returned';
 
                   return (
-                    <div key={r.id} className="bg-white rounded-2xl border p-4 flex justify-between items-center gap-3 shadow-sm">
-                      <div className="flex-1 min-w-0">
-                        <div className="font-bold text-sm text-gray-800">{formatDateUI(r.rental_date)}</div>
-                        <div className="text-xs text-gray-400 font-medium">
-                          {r.quantity} {getPlural(r.quantity, 'сап', 'сапа', 'сапов')} · {days} {getPlural(days, 'день', 'дня', 'дней')}
+                    <div key={r.id} className="bg-white rounded-2xl border p-4 shadow-sm">
+                      <div className="flex justify-between items-start gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-sm text-gray-800">{formatDateUI(r.rental_date)}</div>
+                          <div className="text-xs text-gray-400 font-medium mt-0.5">
+                            {r.quantity} {getPlural(r.quantity, 'сап', 'сапа', 'сапов')} · {days} {getPlural(days, 'день', 'дня', 'дней')}
+                          </div>
+                          {r.note && <div className="text-[10px] text-gray-400 italic mt-1 line-clamp-1">"{r.note}"</div>}
                         </div>
-                        {r.note && <div className="text-[10px] text-gray-400 italic mt-1 line-clamp-1">"{r.note}"</div>}
+                        <div className="text-right shrink-0">
+                          <div className="font-black text-sm text-gray-900">{total.toLocaleString('ru')} ₽</div>
+                          <div className={`text-[9px] font-black uppercase mt-0.5 ${isReturned ? 'text-green-500' : 'text-orange-500'}`}>
+                            {isReturned ? 'Завершена' : 'На воде'}
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-right shrink-0">
-                        <div className="font-black text-sm text-gray-900">{total.toLocaleString('ru')} ₽</div>
-                        <div className={`text-[9px] font-black uppercase mt-0.5 ${isReturned ? 'text-green-500' : 'text-orange-500'}`}>
-                          {isReturned ? 'Завершена' : 'На воде'}
-                        </div>
+                      <div className="mt-3 pt-3 border-t border-gray-50 flex justify-end">
+                        <button onClick={() => openSplitModal(r, 'rental')} className="flex items-center gap-1 text-[10px] font-bold text-red-400 hover:text-red-600 transition-colors uppercase">
+                          ✂️ Отвязать
+                        </button>
                       </div>
                     </div>
                   );
@@ -355,18 +513,25 @@ export const ClientsTab: React.FC<Props> = ({ password, initialClientId, onClear
               </div>
               <div className="flex flex-col gap-2">
                 {profile.sales.map((s: any) => (
-                  <div key={s.id} className="bg-white rounded-2xl border p-4 flex justify-between items-center gap-3 shadow-sm">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-bold text-sm text-gray-800">{new Date(s.created_at).toLocaleDateString('ru')}</div>
-                      <div className="text-[10px] text-gray-400 font-medium truncate mt-0.5">
-                        {s.items.map((i:any) => i.product_name_snapshot).join(', ')}
+                  <div key={s.id} className="bg-white rounded-2xl border p-4 shadow-sm">
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-sm text-gray-800">{new Date(s.created_at).toLocaleDateString('ru')}</div>
+                        <div className="text-[10px] text-gray-400 font-medium truncate mt-0.5">
+                          {s.items.map((i:any) => i.product_name_snapshot).join(', ')}
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="font-black text-sm text-teal-600">{s.total_revenue.toLocaleString('ru')} ₽</div>
+                        <div className="text-[9px] text-gray-300 font-black uppercase mt-0.5">
+                          {s.payment_method === 'cash' ? 'Наличные' : s.payment_method === 'card' ? 'Карта' : 'Перевод'}
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <div className="font-black text-sm text-teal-600">{s.total_revenue.toLocaleString('ru')} ₽</div>
-                      <div className="text-[9px] text-gray-300 font-black uppercase mt-0.5">
-                        {s.payment_method === 'cash' ? 'Наличные' : s.payment_method === 'card' ? 'Карта' : 'Перевод'}
-                      </div>
+                    <div className="mt-3 pt-3 border-t border-gray-50 flex justify-end">
+                      <button onClick={() => openSplitModal(s, 'sale')} className="flex items-center gap-1 text-[10px] font-bold text-red-400 hover:text-red-600 transition-colors uppercase">
+                        ✂️ Отвязать
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -374,6 +539,19 @@ export const ClientsTab: React.FC<Props> = ({ password, initialClientId, onClear
             </div>
           )}
         </div>
+
+        <SplitRecordModal
+          isOpen={splitModalOpen}
+          onClose={() => setSplitModalOpen(false)}
+          record={splitRecord}
+          recordType={splitRecordType}
+          password={password}
+          currentClientId={profile.id}
+          onSuccess={() => {
+            loadClients();
+            openProfile(profile.id);
+          }}
+        />
       </div>
     );
   }

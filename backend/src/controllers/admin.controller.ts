@@ -544,6 +544,12 @@ export class AdminController {
         [id]
       );
 
+      // Get all bookings for this client
+      const bookings = await db.all(
+        `SELECT * FROM bookings WHERE client_id = ? ORDER BY start_date DESC, created_at DESC`,
+        [id]
+      );
+
       // Get all sales for this client
       const sales = await db.all(
         `SELECT * FROM sales WHERE client_id = ? ORDER BY created_at DESC`,
@@ -573,12 +579,14 @@ export class AdminController {
         note: client.note || '',
         rentalCount: rentals.length,
         saleCount: sales.length,
+        bookingCount: bookings.length,
         totalSpent: Math.round(totalSpent * 100) / 100,
         totalSups,
         firstVisit: rentals.length > 0 ? rentals[rentals.length - 1].rental_date : (sales.length > 0 ? sales[sales.length-1].created_at : null),
         lastVisit: rentals.length > 0 ? rentals[0].rental_date : (sales.length > 0 ? sales[0].created_at : null),
         rentals,
         sales,
+        bookings,
       });
     } catch (err) {
       next(err);
@@ -599,6 +607,57 @@ export class AdminController {
         return res.status(404).json({ error: 'Client not found' });
       }
       res.json({ success: true });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async splitRecord(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params; // current client id
+      const { recordType, recordId, action, targetClientId, newName, newPhone } = req.body;
+      const db = await getDb();
+
+      // Ensure valid action
+      if (!['new_client', 'existing_client'].includes(action)) {
+        return res.status(400).json({ error: 'Invalid action' });
+      }
+
+      // Ensure valid recordType
+      if (!['booking', 'rental', 'sale'].includes(recordType)) {
+        return res.status(400).json({ error: 'Invalid recordType' });
+      }
+
+      let newClientId = targetClientId;
+
+      // Handle new client creation
+      if (action === 'new_client') {
+        newClientId = crypto.randomUUID();
+        const norm = newPhone ? normalizePhone(newPhone) : '';
+        await db.run(
+          `INSERT INTO clients (id, name, phone, phone_normalized, telegram_username, note)
+           VALUES (?, ?, ?, ?, '', '')`,
+          [newClientId, newName || 'Без имени', newPhone || '', norm]
+        );
+      }
+
+      if (!newClientId) {
+        return res.status(400).json({ error: 'targetClientId is required for existing_client action' });
+      }
+
+      // Reassign record to the new/existing client
+      if (recordType === 'rental') {
+        await db.run('UPDATE rentals SET client_id = ?, customer_name = ?, customer_phone = ? WHERE id = ? AND client_id = ?', 
+          [newClientId, newName || '', newPhone || '', recordId, id]);
+      } else if (recordType === 'sale') {
+        await db.run('UPDATE sales SET client_id = ?, customer_name = ?, customer_phone = ? WHERE id = ? AND client_id = ?', 
+          [newClientId, newName || '', newPhone || '', recordId, id]);
+      } else if (recordType === 'booking') {
+        await db.run('UPDATE bookings SET client_id = ?, customer_name = ?, customer_phone = ? WHERE id = ? AND client_id = ?', 
+          [newClientId, newName || '', newPhone || '', recordId, id]);
+      }
+
+      res.json({ success: true, newClientId });
     } catch (err) {
       next(err);
     }
