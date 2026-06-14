@@ -131,7 +131,7 @@ export const Dashboard: React.FC = () => {
     startLocal.setDate(startLocal.getDate() + createFormData.durationDays - 1);
     const endDate = formatLocalYYYYMMDD(startLocal);
     
-    const p = calculatePricing(createFormData.startDate, endDate, createFormData.quantity);
+    const p = calculatePricing(createFormData.startDate, endDate, createFormData.quantity, true);
     setCreateTotalPrice(String(p.totalPrice));
     setCreatePrepayment(String(p.prepayment));
   }, [createFormData.startDate, createFormData.durationDays, createFormData.quantity, isCreateModalOpen]);
@@ -140,6 +140,7 @@ export const Dashboard: React.FC = () => {
   const [issueModalOpen, setIssueModalOpen] = useState(false);
   const [issueModalDate, setIssueModalDate] = useState('');
   const [issueModalPrefill, setIssueModalPrefill] = useState<any>(null);
+  const [issueModalIsEditing, setIssueModalIsEditing] = useState(false);
 
   useEffect(() => {
     if (!password) { navigate('/admin'); return; }
@@ -193,7 +194,11 @@ export const Dashboard: React.FC = () => {
   };
 
   const handleIssueSubmit = async (data: any) => {
-    await apiClient.issueRental(password, data);
+    if (issueModalIsEditing && data.id) {
+      await apiClient.updateRental(password, data.id, data);
+    } else {
+      await apiClient.issueRental(password, data);
+    }
     await loadAll();
   };
 
@@ -236,12 +241,64 @@ export const Dashboard: React.FC = () => {
       prepayment: b.prepayment,
       durationDays: Math.round((new Date(b.end_date).getTime() - new Date(b.start_date).getTime()) / 86400000) + 1
     });
+    setIssueModalIsEditing(false);
     setIssueModalOpen(true);
   };
 
   const openQuickIssue = (dateStr: string) => {
     setIssueModalDate(dateStr);
     setIssueModalPrefill(null);
+    setIssueModalIsEditing(false);
+    setIssueModalOpen(true);
+  };
+
+  const openIssueForClient = (client: any) => {
+    const d = new Date();
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    setIssueModalDate(today);
+    setIssueModalPrefill({
+      name: client.name,
+      phone: client.phone,
+      tgUsername: client.tgUsername,
+      quantity: 1,
+      pickupTime: '10:00'
+    });
+    setIssueModalIsEditing(false);
+    setIssueModalOpen(true);
+  };
+
+  const openIssueForEditing = (r: Rental) => {
+    let gearList: Record<string, number> = {};
+    try { 
+      const parsed = JSON.parse(r.extra_gear); 
+      if (Array.isArray(parsed)) {
+        parsed.forEach((g: any) => gearList[g.name] = g.qty);
+      }
+    } catch {}
+    let depositList: string[] = [];
+    try { depositList = JSON.parse(r.deposit_types); } catch {}
+
+    setIssueModalDate(r.rental_date);
+    setIssueModalPrefill({
+      id: r.id,
+      name: r.customer_name,
+      phone: r.customer_phone,
+      tgUsername: r.customer_tg_username,
+      quantity: r.quantity,
+      pickupTime: r.pickup_time,
+      bookingId: r.booking_id,
+      durationDays: Math.round((new Date(r.end_date || r.rental_date).getTime() - new Date(r.rental_date).getTime()) / 86400000) + 1,
+      totalPrice: r.total_price,
+      prepayment: r.prepayment,
+      paymentOnSite: r.payment_on_site,
+      expectedReturnTime: r.expected_return_time,
+      penalty: r.penalty,
+      paymentMethod: r.payment_method,
+      depositTypes: depositList,
+      depositNote: r.deposit_note,
+      extraGear: gearList
+    });
+    setIssueModalIsEditing(true);
     setIssueModalOpen(true);
   };
 
@@ -424,6 +481,9 @@ export const Dashboard: React.FC = () => {
                 <button onClick={() => handleReturn(r.id)} className="flex-1 py-2 bg-green-500 text-white rounded-lg text-sm font-bold active:bg-green-600 transition-colors">
                   ✓ Вернул
                 </button>
+                <button onClick={() => openIssueForEditing(r)} className="px-4 py-2 bg-white text-blue-500 border border-blue-200 rounded-lg active:bg-blue-50 transition-colors flex items-center justify-center font-medium text-sm shadow-sm">
+                  Изменить
+                </button>
                 <button onClick={() => handleDeleteRental(r.id)} className="px-3 py-2 bg-white text-red-500 border border-red-200 rounded-lg active:bg-red-50 transition-colors flex items-center justify-center">
                   <Trash2 size={18} />
                 </button>
@@ -558,7 +618,7 @@ export const Dashboard: React.FC = () => {
       {error && <div className="text-red-500 text-sm">{error}</div>}
 
       {filter === 'stats'    ? <StatsTab password={password} /> :
-       filter === 'clients'  ? <ClientsTab password={password} initialClientId={quickClientId} onClearInitialClient={() => setQuickClientId(null)} /> :
+       filter === 'clients'  ? <ClientsTab password={password} initialClientId={quickClientId} onClearInitialClient={() => setQuickClientId(null)} onAddRental={openIssueForClient} /> :
        filter === 'products' ? <ProductsTab password={password} /> :
        filter === 'sales'    ? <SalesTab password={password} /> :
        filter === 'calendar' ? renderCalendar() : (
@@ -645,10 +705,10 @@ export const Dashboard: React.FC = () => {
             
             <div className="flex gap-4">
               <div className="flex-1">
-                <Input type="number" label="Итого (₽)" value={createTotalPrice} onChange={e => setCreateTotalPrice(e.target.value)} />
+                <Input type="number" step="100" label="Итого (₽)" value={createTotalPrice} onChange={e => setCreateTotalPrice(e.target.value)} />
               </div>
               <div className="flex-1">
-                <Input type="number" label="Предоплата (₽)" value={createPrepayment} onChange={e => setCreatePrepayment(e.target.value)} />
+                <Input type="number" step="100" label="Предоплата (₽)" value={createPrepayment} onChange={e => setCreatePrepayment(e.target.value)} />
               </div>
             </div>
 
@@ -674,6 +734,7 @@ export const Dashboard: React.FC = () => {
         <IssueModal
           date={issueModalDate}
           prefill={issueModalPrefill}
+          isEditing={issueModalIsEditing}
           onClose={() => setIssueModalOpen(false)}
           onSubmit={handleIssueSubmit}
         />

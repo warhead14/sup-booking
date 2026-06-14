@@ -137,7 +137,7 @@ export const ProductsTab: React.FC<Props> = ({ password }) => {
             <div>
               <div className="text-[10px] text-gray-400 mb-1">Цена продажи ₽</div>
               <input
-                type="number" inputMode="decimal" placeholder="0"
+                type="number" step="100" inputMode="decimal" placeholder="0"
                 value={createForm.default_price}
                 onChange={e => setCreateForm(f => ({ ...f, default_price: e.target.value }))}
                 className="w-full h-10 px-3 border border-gray-200 rounded-lg text-sm outline-none focus:border-teal-500"
@@ -146,7 +146,7 @@ export const ProductsTab: React.FC<Props> = ({ password }) => {
             <div>
               <div className="text-[10px] text-gray-400 mb-1">Себестоимость ₽</div>
               <input
-                type="number" inputMode="decimal" placeholder="0"
+                type="number" step="100" inputMode="decimal" placeholder="0"
                 value={createForm.default_cost_price}
                 onChange={e => setCreateForm(f => ({ ...f, default_cost_price: e.target.value }))}
                 className="w-full h-10 px-3 border border-gray-200 rounded-lg text-sm outline-none focus:border-teal-500"
@@ -197,7 +197,7 @@ export const ProductsTab: React.FC<Props> = ({ password }) => {
                   <div>
                     <div className="text-[10px] text-gray-400 mb-1">Цена продажи ₽</div>
                     <input
-                      type="number" inputMode="decimal"
+                      type="number" step="100" inputMode="decimal"
                       value={editForm.default_price}
                       onChange={e => setEditForm(f => ({ ...f, default_price: e.target.value }))}
                       className="w-full h-10 px-3 border border-gray-200 rounded-lg text-sm outline-none focus:border-teal-500"
@@ -206,7 +206,7 @@ export const ProductsTab: React.FC<Props> = ({ password }) => {
                   <div>
                     <div className="text-[10px] text-gray-400 mb-1">Себестоимость ₽</div>
                     <input
-                      type="number" inputMode="decimal"
+                      type="number" step="100" inputMode="decimal"
                       value={editForm.default_cost_price}
                       onChange={e => setEditForm(f => ({ ...f, default_cost_price: e.target.value }))}
                       className="w-full h-10 px-3 border border-gray-200 rounded-lg text-sm outline-none focus:border-teal-500"

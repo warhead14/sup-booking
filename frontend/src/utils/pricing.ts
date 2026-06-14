@@ -12,11 +12,14 @@ export const isWeekend = (dateStr: string): boolean => {
   return d.getDay() === 0 || d.getDay() === 6;
 };
 
-export const getPriceForDay = (dateStr: string): number => {
+export const getPriceForDay = (dateStr: string, isAdmin: boolean = false): number => {
+  if (isAdmin) {
+    return isWeekend(dateStr) ? 1200 : 900;
+  }
   return isWeekend(dateStr) ? 1000 : 800;
 };
 
-export const calculatePricing = (startDate: string, endDate: string, quantity: number) => {
+export const calculatePricing = (startDate: string, endDate: string, quantity: number, isAdmin: boolean = false) => {
   if (!startDate || !endDate || quantity <= 0) {
     return { totalPrice: 0, prepayment: 0, explanation: '' };
   }
@@ -45,7 +48,9 @@ export const calculatePricing = (startDate: string, endDate: string, quantity: n
     const currentDateStr = `${yyyy}-${mm}-${dd}`;
 
     const isWeekEndDay = isWeekend(currentDateStr);
-    const dailyCost = (isWeekEndDay ? 1000 : 800) * quantity;
+    const weekdayPrice = isAdmin ? 900 : 800;
+    const weekendPrice = isAdmin ? 1200 : 1000;
+    const dailyCost = (isWeekEndDay ? weekendPrice : weekdayPrice) * quantity;
     totalCost += dailyCost;
 
     if (isWeekEndDay) {
@@ -62,7 +67,20 @@ export const calculatePricing = (startDate: string, endDate: string, quantity: n
     current.setDate(current.getDate() + 1);
   }
 
-  const prepayment = Math.round(firstDayCost / 2);
+  let prepayment = Math.round(firstDayCost / 2);
+  
+  if (isAdmin) {
+    const firstDayPricePerSup = firstDayCost / quantity;
+    let prepayPerSup = 300;
+    if (firstDayPricePerSup === 1200) prepayPerSup = 400;
+    else if (firstDayPricePerSup === 1000) prepayPerSup = 300;
+    else if (firstDayPricePerSup === 900) prepayPerSup = 300;
+    else if (firstDayPricePerSup === 800) prepayPerSup = 300;
+    else if (firstDayPricePerSup === 700) prepayPerSup = 300;
+    else prepayPerSup = Math.round(firstDayPricePerSup / 2);
+    
+    prepayment = prepayPerSup * quantity;
+  }
 
   const supWord = (q: number) => {
     const mod10 = q % 10;
@@ -81,10 +99,13 @@ export const calculatePricing = (startDate: string, endDate: string, quantity: n
   };
 
   let explanation = '';
+  const weekdayPrice = isAdmin ? 900 : 800;
+  const weekendPrice = isAdmin ? 1200 : 1000;
+
   if (weekdaysCount > 0 && weekendsCount === 0) {
-    explanation = `${supWord(quantity)} × 800 ₽ × ${dayWord(weekdaysCount)}`;
+    explanation = `${supWord(quantity)} × ${weekdayPrice} ₽ × ${dayWord(weekdaysCount)}`;
   } else if (weekendsCount > 0 && weekdaysCount === 0) {
-    explanation = `${supWord(quantity)} × 1000 ₽ × ${dayWord(weekendsCount)}`;
+    explanation = `${supWord(quantity)} × ${weekendPrice} ₽ × ${dayWord(weekendsCount)}`;
   } else {
     explanation = `${supWord(quantity)} × (${weekdaysCount} будн. + ${weekendsCount} вых.)`;
   }

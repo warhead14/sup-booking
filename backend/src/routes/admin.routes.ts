@@ -16,6 +16,7 @@ router.delete('/bookings/:id', AdminController.deleteBooking);
 router.get('/rentals', AdminController.getRentals);
 router.post('/rentals', AdminController.issueRental);
 router.patch('/rentals/:id/return', AdminController.returnRental);
+router.put('/rentals/:id', AdminController.updateRental);
 router.delete('/rentals/:id', AdminController.deleteRental);
 
 router.get('/stats', AdminController.getStats);

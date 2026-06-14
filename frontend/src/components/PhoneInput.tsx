@@ -19,6 +19,17 @@ export const formatPhoneNumber = (input: string): string => {
   
   let digits = input.replace(/\D/g, '');
   
+  // Handle duplicate prefixes when pasting/autofilling into "+7 (9"
+  if (digits.length >= 12) {
+    if (digits.startsWith('7979')) {
+      digits = digits.substring(2);
+    } else if (digits.startsWith('7989')) {
+      digits = digits.substring(2);
+    } else if (digits.startsWith('799')) {
+      digits = digits.substring(2);
+    }
+  }
+  
   // Strip the country code (7 or 8)
   if (digits.startsWith('7') || digits.startsWith('8')) {
     digits = digits.substring(1);
@@ -61,6 +72,13 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
     }
   };
 
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData('text');
+    const formatted = formatPhoneNumber(pastedText);
+    onChange(formatted);
+  };
+
   return (
     <Input
       label={label}
@@ -69,6 +87,7 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
       value={value}
       onChange={handleChange}
       onFocus={handleFocus}
+      onPaste={handlePaste}
       error={error}
       className={className}
     />

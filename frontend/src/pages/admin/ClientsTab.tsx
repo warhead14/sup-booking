@@ -34,7 +34,7 @@ type ClientProfile = {
 
 type SortKey = 'totalSpent_desc' | 'lastRental_desc';
 
-type Props = { password: string; initialClientId?: string | null; onClearInitialClient?: () => void };
+type Props = { password: string; initialClientId?: string | null; onClearInitialClient?: () => void; onAddRental?: (client: any) => void; };
 
 function getPlural(n: number, one: string, two: string, five: string) {
   const x = Math.abs(n) % 100;
@@ -147,7 +147,7 @@ const NoteEditor: React.FC<{
 };
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export const ClientsTab: React.FC<Props> = ({ password, initialClientId, onClearInitialClient }) => {
+export const ClientsTab: React.FC<Props> = ({ password, initialClientId, onClearInitialClient, onAddRental }) => {
   const [clients, setClients] = useState<Client[]>([]);
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('totalSpent_desc');
@@ -288,6 +288,17 @@ export const ClientsTab: React.FC<Props> = ({ password, initialClientId, onClear
             </div>
             <div className="text-[10px] text-gray-400 font-bold mt-1 uppercase">За всё время</div>
           </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-3">
+          <button
+            onClick={() => onAddRental?.(profile)}
+            className="flex-1 py-3 bg-teal-500 text-white rounded-2xl font-bold shadow-sm active:bg-teal-600 transition-colors flex items-center justify-center gap-2"
+          >
+            <Waves size={20} />
+            Добавить аренду
+          </button>
         </div>
 
         {/* Client note */}

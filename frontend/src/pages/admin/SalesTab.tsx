@@ -325,7 +325,7 @@ const NewSaleModal: React.FC<{
                     <div>
                       <div className="text-[9px] font-bold text-gray-400 mb-0.5 uppercase ml-1">Цена ₽</div>
                       <input
-                        type="number" inputMode="decimal"
+                        type="number" step="100" inputMode="decimal"
                         value={line.sellPrice}
                         onChange={e => updateLine(line.key, 'sellPrice', e.target.value)}
                         className="w-full h-9 px-2 border border-gray-200 rounded-lg text-sm bg-white outline-none focus:border-teal-500"
@@ -334,7 +334,7 @@ const NewSaleModal: React.FC<{
                     <div>
                       <div className="text-[9px] font-bold text-gray-400 mb-0.5 uppercase ml-1">Закуп ₽</div>
                       <input
-                        type="number" inputMode="decimal"
+                        type="number" step="100" inputMode="decimal"
                         value={line.costPrice}
                         onChange={e => updateLine(line.key, 'costPrice', e.target.value)}
                         className="w-full h-9 px-2 border border-gray-200 rounded-lg text-sm bg-white outline-none focus:border-teal-500"

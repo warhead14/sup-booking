@@ -170,6 +170,93 @@ export class AdminController {
     }
   }
 
+  static async updateRental(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      const data = req.body || {};
+      const db = await getDb();
+
+      const existingRental = await db.get('SELECT * FROM rentals WHERE id = ?', [id]);
+      if (!existingRental) {
+        return res.status(404).json({ error: 'Rental not found' });
+      }
+
+      let clientId: string | null = existingRental.client_id;
+      const phone = (data.customerPhone || '').toString().trim();
+      if (phone) {
+        const norm = normalizePhone(phone);
+        if (norm) {
+          const existingClient = await db.get(
+            'SELECT id FROM clients WHERE phone_normalized = ?', [norm]
+          );
+          if (existingClient) {
+            clientId = existingClient.id;
+            if (data.customerName) {
+              await db.run(
+                'UPDATE clients SET name = ?, telegram_username = COALESCE(NULLIF(?, \'\'), telegram_username), updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                [data.customerName, data.customerTgUsername || '', clientId]
+              );
+            }
+          } else if (data.customerName) {
+            clientId = crypto.randomUUID();
+            await db.run(
+              `INSERT INTO clients (id, name, phone, phone_normalized, telegram_username, note)
+               VALUES (?, ?, ?, ?, ?, '')`,
+              [clientId, data.customerName.trim(), phone, norm, data.customerTgUsername || '']
+            );
+          }
+        }
+      }
+
+      await db.run(
+        `UPDATE rentals SET
+          client_id = ?,
+          customer_name = ?,
+          customer_phone = ?,
+          customer_tg_username = ?,
+          quantity = ?,
+          pickup_time = ?,
+          rental_date = ?,
+          end_date = ?,
+          expected_return_time = ?,
+          prepayment = ?,
+          payment_on_site = ?,
+          total_price = ?,
+          penalty = ?,
+          payment_method = ?,
+          deposit_types = ?,
+          deposit_note = ?,
+          extra_gear = ?
+         WHERE id = ?`,
+        [
+          clientId,
+          data.customerName || '',
+          phone,
+          data.customerTgUsername || '',
+          data.quantity || 1,
+          data.pickupTime || '',
+          data.rentalDate || '',
+          data.endDate || data.rentalDate || '',
+          data.expectedReturnTime || '',
+          data.prepayment || 0,
+          data.paymentOnSite || 0,
+          data.totalPrice || 0,
+          data.penalty || 0,
+          data.paymentMethod || '',
+          JSON.stringify(data.depositTypes || []),
+          data.depositNote || '',
+          JSON.stringify(data.extraGear || []),
+          id
+        ]
+      );
+
+      const rental = await db.get('SELECT * FROM rentals WHERE id = ?', [id]);
+      res.json({ success: true, rental });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   static async returnRental(req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
@@ -218,8 +305,23 @@ export class AdminController {
     };
 
     for (const r of rentals) {
+      let splits: any[] = [];
+      let baseOnSite = Number(r.payment_on_site) || 0;
+      
+      try {
+        if (r.payment_method && r.payment_method.startsWith('[')) {
+          splits = JSON.parse(r.payment_method);
+          // Redefine onSite to match the exact sum of splits to prevent UI discrepancies
+          baseOnSite = splits.reduce((sum, split) => sum + (Number(split.amount) || 0), 0);
+        } else {
+          splits = [{ method: r.payment_method || 'Не указан', amount: baseOnSite }];
+        }
+      } catch {
+        splits = [{ method: r.payment_method || 'Не указан', amount: baseOnSite }];
+      }
+
       const prep = Number(r.prepayment) || 0;
-      const onSite = Number(r.payment_on_site) || 0;
+      const onSite = baseOnSite;
       const pen = Number(r.penalty) || 0;
       const total = prep + onSite + pen;
       const sups = Number(r.quantity) || 0;
@@ -237,12 +339,19 @@ export class AdminController {
       if (total > 0) incomeList.push({ id: r.id, name: r.customer_name, sum: total, sups, days });
       if (sups > 0) rentalList.push({ id: r.id, name: r.customer_name, sups, days });
       if (prep > 0) prepaymentList.push({ id: r.id, name: r.customer_name, sum: prep, time: r.created_at });
+      
       if (onSite > 0) {
-        onSiteList.push({ id: r.id, name: r.customer_name, sum: onSite, time: r.returned_at, method: r.payment_method });
-        const method = r.payment_method || 'Не указан';
-        if (onSiteBreakdown.hasOwnProperty(method)) {
-          onSiteBreakdown[method] += onSite;
-        }
+        splits.forEach(split => {
+          const amt = Number(split.amount) || 0;
+          if (amt > 0) {
+            onSiteList.push({ id: r.id, name: r.customer_name, sum: amt, time: r.returned_at, method: split.method });
+            if (onSiteBreakdown.hasOwnProperty(split.method)) {
+              onSiteBreakdown[split.method] += amt;
+            } else {
+              onSiteBreakdown[split.method] = amt;
+            }
+          }
+        });
       }
 
       const gear = JSON.parse(r.extra_gear || '[]');

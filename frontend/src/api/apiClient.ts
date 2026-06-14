@@ -87,6 +87,29 @@ export const apiClient = {
     }
   },
 
+  updateRental: async (password: string, id: string, payload: any): Promise<void> => {
+    const res = await fetch(`${API_BASE}/admin/rentals/${id}`, {
+      method: 'PUT',
+      headers: { 
+        'Content-Type': 'application/json',
+        'x-admin-password': password 
+      },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      let msg = 'Не удалось обновить выдачу. Проверьте правильность заполнения полей.';
+      try {
+        const body = await res.json();
+        if (body.error === 'Validation Error') {
+          msg = 'Пожалуйста, заполните все обязательные поля корректно.';
+        } else if (body.error) {
+          msg = body.error;
+        }
+      } catch (e) {}
+      throw new Error(msg);
+    }
+  },
+
   returnRental: async (password: string, id: string): Promise<void> => {
     const res = await fetch(`${API_BASE}/admin/rentals/${id}/return`, {
       method: 'PATCH',
