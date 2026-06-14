@@ -650,8 +650,8 @@ export class AdminController {
         await db.run('UPDATE rentals SET client_id = ?, customer_name = ?, customer_phone = ? WHERE id = ? AND client_id = ?', 
           [newClientId, newName || '', newPhone || '', recordId, id]);
       } else if (recordType === 'sale') {
-        await db.run('UPDATE sales SET client_id = ?, customer_name = ?, customer_phone = ? WHERE id = ? AND client_id = ?', 
-          [newClientId, newName || '', newPhone || '', recordId, id]);
+        await db.run('UPDATE sales SET client_id = ? WHERE id = ? AND client_id = ?', 
+          [newClientId, recordId, id]);
       } else if (recordType === 'booking') {
         await db.run('UPDATE bookings SET client_id = ?, customer_name = ?, customer_phone = ? WHERE id = ? AND client_id = ?', 
           [newClientId, newName || '', newPhone || '', recordId, id]);
