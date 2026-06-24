@@ -385,7 +385,7 @@ export const IssueModal: React.FC<Props> = ({ date, prefill, onClose, onSubmit, 
 
         <div className="flex gap-2">
           {!isEditing && (
-            <Button loading={loading} onClick={handleSaveDraft} className="bg-white border-2 border-teal-base !text-teal-base hover:bg-teal-50">В черновики</Button>
+            <Button loading={loading} onClick={handleSaveDraft} className="!w-auto px-5 bg-white border border-gray-300 !text-gray-500 hover:!text-teal-base hover:border-teal-base hover:bg-teal-50/30 !text-sm !font-medium">В черновики</Button>
           )}
           <Button loading={loading} onClick={handleSubmit} className="flex-1">{isEditing ? 'Сохранить изменения' : 'Выдать'}</Button>
         </div>

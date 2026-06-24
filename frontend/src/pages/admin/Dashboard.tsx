@@ -785,7 +785,7 @@ export const Dashboard: React.FC = () => {
             </div>
             {createError && <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg">❌ {createError}</div>}
             <div className="flex gap-2">
-              <Button loading={createLoading} onClick={handleSaveBookingDraft} className="bg-white border-2 border-teal-base !text-teal-base hover:bg-teal-50">В черновики</Button>
+              <Button loading={createLoading} onClick={handleSaveBookingDraft} className="!w-auto px-5 bg-white border border-gray-300 !text-gray-500 hover:!text-teal-base hover:border-teal-base hover:bg-teal-50/30 !text-sm !font-medium">В черновики</Button>
               <Button loading={createLoading} onClick={handleCreateSubmit} className="flex-1">Сохранить бронь</Button>
             </div>
           </div>
