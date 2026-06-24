@@ -250,11 +250,41 @@ export const apiClient = {
   },
 
   deleteSale: async (password: string, id: string): Promise<void> => {
-    const res = await fetch(`${API_BASE}/admin/sales/${encodeURIComponent(id)}`, {
+    const res = await fetch(`${API_BASE}/admin/sales/${id}`, {
       method: 'DELETE',
       headers: { 'x-admin-password': password }
     });
-    if (!res.ok) throw new Error('Ошибка удаления продажи');
+    if (!res.ok) throw new Error('Не удалось удалить продажу');
+  },
+
+  // ─── Drafts ─────────────────────────────────────────────────────────────
+  getDrafts: async (password: string): Promise<any[]> => {
+    const res = await fetch(`${API_BASE}/admin/drafts`, {
+      headers: { 'x-admin-password': password }
+    });
+    if (!res.ok) throw new Error('Не удалось загрузить черновики');
+    return res.json();
+  },
+
+  saveDraft: async (password: string, payload: any): Promise<any> => {
+    const res = await fetch(`${API_BASE}/admin/drafts`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'x-admin-password': password 
+      },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Не удалось сохранить черновик');
+    return res.json();
+  },
+
+  deleteDraft: async (password: string, id: string): Promise<void> => {
+    const res = await fetch(`${API_BASE}/admin/drafts/${id}`, {
+      method: 'DELETE',
+      headers: { 'x-admin-password': password }
+    });
+    if (!res.ok) throw new Error('Не удалось удалить черновик');
   },
 
   getSalesStats: async (password: string, params?: { startDate?: string; endDate?: string }): Promise<any> => {

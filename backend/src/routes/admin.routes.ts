@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { AdminController } from '../controllers/admin.controller';
 import { SalesController } from '../controllers/sales.controller';
+import { DraftController } from '../controllers/draft.controller';
 import { adminAuthMiddleware } from '../middlewares/auth.middleware';
 
 const router = Router();
@@ -39,5 +40,10 @@ router.get('/sales', SalesController.getSales);
 router.get('/sales/stats', SalesController.getSalesStats);
 router.post('/sales', SalesController.createSale);
 router.delete('/sales/:id', SalesController.deleteSale);
+
+// Drafts
+router.get('/drafts', DraftController.getDrafts);
+router.post('/drafts', DraftController.saveDraft);
+router.delete('/drafts/:id', DraftController.deleteDraft);
 
 export default router;

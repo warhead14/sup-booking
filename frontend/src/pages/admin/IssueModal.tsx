@@ -23,6 +23,8 @@ type Props = {
   onClose: () => void;
   onSubmit: (data: any) => Promise<void>;
   isEditing?: boolean;
+  draftId?: string | null;
+  password?: string;
 };
 
 function addHours(time: string, hours: number): string {
@@ -33,7 +35,9 @@ function addHours(time: string, hours: number): string {
 
 // We will use calculatePricing instead of calcPrice
 
-export const IssueModal: React.FC<Props> = ({ date, prefill, onClose, onSubmit, isEditing }) => {
+import { apiClient } from '../../api/apiClient';
+
+export const IssueModal: React.FC<Props> = ({ date, prefill, onClose, onSubmit, isEditing, draftId, password }) => {
   const [loading, setLoading] = useState(false);
   const [_error, setError] = useState('');
   const [name, setName] = useState(prefill?.name || '');
@@ -152,6 +156,32 @@ export const IssueModal: React.FC<Props> = ({ date, prefill, onClose, onSubmit, 
       onClose();
     } catch (e: any) {
       setError(e.message || 'Ошибка');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    if (!password) return;
+    setLoading(true);
+    try {
+      await apiClient.saveDraft(password, {
+        id: draftId || undefined,
+        type: 'rental',
+        title: name || 'Без имени',
+        payload: {
+          name, phone, tgUsername, quantity, pickupTime, expectedReturnTime: expectedReturn,
+          durationDays, rentalDate: localDate, totalPrice: parseFloat(totalPriceStr) || 0,
+          prepayment: parseFloat(prepayment) || 0, paymentOnSite: parseFloat(paymentOnSite) || 0,
+          penalty: parseFloat(penalty) || 0,
+          paymentMethod: isSplitMode ? JSON.stringify(splitPayments) : paymentMethod,
+          depositTypes, depositNote, extraGear: gear,
+          bookingId: prefill?.bookingId
+        }
+      });
+      onClose();
+    } catch (e: any) {
+      alert(`Ошибка сохранения черновика: ${e.message}`);
     } finally {
       setLoading(false);
     }
@@ -353,7 +383,12 @@ export const IssueModal: React.FC<Props> = ({ date, prefill, onClose, onSubmit, 
         </div>
 
 
-        <Button loading={loading} onClick={handleSubmit}>{isEditing ? 'Сохранить изменения' : 'Выдать'}</Button>
+        <div className="flex gap-2">
+          {!isEditing && (
+            <Button loading={loading} onClick={handleSaveDraft} className="bg-white border-2 border-teal-base !text-teal-base hover:bg-teal-50">В черновики</Button>
+          )}
+          <Button loading={loading} onClick={handleSubmit} className="flex-1">{isEditing ? 'Сохранить изменения' : 'Выдать'}</Button>
+        </div>
       </div>
     </div>
   );

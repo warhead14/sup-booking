@@ -9,6 +9,7 @@ import { StatsTab } from './StatsTab';
 import { ClientsTab } from './ClientsTab';
 import { ProductsTab } from './ProductsTab';
 import { SalesTab } from './SalesTab';
+import { DraftsTab } from './DraftsTab';
 import { formatDateUI, formatRangeUI } from '../../utils/dateFormatter';
 import { calculatePricing } from '../../utils/pricing';
 import { Phone, Check, X, LogOut, Ban, ChevronLeft, ChevronRight, ArrowLeft, Plus, Waves, CheckCircle, Ship, Clock, Trash2, Sun, Moon } from 'lucide-react';
@@ -81,7 +82,7 @@ export const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
-  const [filter, setFilter] = useState<'pending'|'approved'|'calendar'|'stats'|'clients'|'products'|'sales'>('pending');
+  const [filter, setFilter] = useState<'pending'|'approved'|'calendar'|'stats'|'clients'|'products'|'sales'|'drafts'>('pending');
   const [search, setSearch] = useState('');
   const [quickClientId, setQuickClientId] = useState<string | null>(null);
   
@@ -138,9 +139,33 @@ export const Dashboard: React.FC = () => {
 
   // Issue modal state
   const [issueModalOpen, setIssueModalOpen] = useState(false);
-  const [issueModalDate, setIssueModalDate] = useState('');
-  const [issueModalPrefill, setIssueModalPrefill] = useState<any>(null);
+  const [issueModalDate, setIssueModalDate] = useState<string>('');
+  const [issueModalPrefill, setIssueModalPrefill] = useState<any>(undefined);
   const [issueModalIsEditing, setIssueModalIsEditing] = useState(false);
+  const [issueModalDraftId, setIssueModalDraftId] = useState<string | null>(null);
+
+  const [currentBookingDraftId, setCurrentBookingDraftId] = useState<string | null>(null);
+
+  const handleOpenDraft = (draft: any) => {
+    try {
+      const payload = typeof draft.payload === 'string' ? JSON.parse(draft.payload) : draft.payload;
+      if (draft.type === 'booking') {
+        setCreateFormData(payload.formData || { fullName: '', phone: '', messenger: 'telegram', startDate: formatLocalYYYYMMDD(new Date()), durationDays: 1, pickupTime: '10:00', quantity: 1 });
+        setCreateTotalPrice(payload.totalPrice || '');
+        setCreatePrepayment(payload.prepayment || '');
+        setCurrentBookingDraftId(draft.id);
+        setIsCreateModalOpen(true);
+      } else if (draft.type === 'rental') {
+        setIssueModalPrefill(payload);
+        setIssueModalIsEditing(false);
+        setIssueModalDate(payload.rentalDate || '');
+        setIssueModalDraftId(draft.id);
+        setIssueModalOpen(true);
+      }
+    } catch (e) {
+      console.error('Failed to parse draft payload', e);
+    }
+  };
 
   useEffect(() => {
     if (!password) { navigate('/admin'); return; }
@@ -184,12 +209,39 @@ export const Dashboard: React.FC = () => {
         startDate: createFormData.startDate, endDate, pickupTime: createFormData.pickupTime, quantity: createFormData.quantity,
         totalPrice: parseFloat(createTotalPrice) || 0, prepayment: parseFloat(createPrepayment) || 0
       });
+      if (currentBookingDraftId) {
+        try { await apiClient.deleteDraft(password, currentBookingDraftId); } catch(e) {}
+      }
       setIsCreateModalOpen(false); setCreateError('');
       setCreateFormData(prev => ({ ...prev, fullName: '', phone: '', quantity: 1, durationDays: 1 }));
       setCreateTotalPrice('');
       setCreatePrepayment('');
+      setCurrentBookingDraftId(null);
       await loadAll();
     } catch (err: any) { setCreateError(err.message || 'Ошибка'); }
+    finally { setCreateLoading(false); }
+  };
+
+  const handleSaveBookingDraft = async () => {
+    setCreateLoading(true); setCreateError('');
+    try {
+      await apiClient.saveDraft(password, {
+        id: currentBookingDraftId || undefined,
+        type: 'booking',
+        title: createFormData.fullName || 'Без имени',
+        payload: {
+          formData: createFormData,
+          totalPrice: createTotalPrice,
+          prepayment: createPrepayment
+        }
+      });
+      setIsCreateModalOpen(false);
+      setCurrentBookingDraftId(null);
+      setCreateFormData(prev => ({ ...prev, fullName: '', phone: '', quantity: 1, durationDays: 1 }));
+      setCreateTotalPrice('');
+      setCreatePrepayment('');
+      await loadAll();
+    } catch (err: any) { setCreateError(err.message || 'Ошибка сохранения черновика'); }
     finally { setCreateLoading(false); }
   };
 
@@ -198,7 +250,13 @@ export const Dashboard: React.FC = () => {
       await apiClient.updateRental(password, data.id, data);
     } else {
       await apiClient.issueRental(password, data);
+      if (issueModalDraftId) {
+        try { await apiClient.deleteDraft(password, issueModalDraftId); } catch(e) {}
+      }
     }
+    setIssueModalOpen(false);
+    setIssueModalPrefill(undefined);
+    setIssueModalDraftId(null);
     await loadAll();
   };
 
@@ -612,6 +670,7 @@ export const Dashboard: React.FC = () => {
         <Tab label="Клиенты" active={filter === 'clients'} onClick={() => { setFilter('clients'); setSelectedCalendarDayStr(null); }} />
         <Tab label="Товары" active={filter === 'products'} onClick={() => { setFilter('products'); setSelectedCalendarDayStr(null); }} />
         <Tab label="Продажи" active={filter === 'sales'} onClick={() => { setFilter('sales'); setSelectedCalendarDayStr(null); }} />
+        <Tab label="Черновики" active={filter === 'drafts'} onClick={() => { setFilter('drafts'); setSelectedCalendarDayStr(null); }} />
         <Tab label="Стат." active={filter === 'stats'} onClick={() => { setFilter('stats'); setSelectedCalendarDayStr(null); }} />
       </div>
 
@@ -621,6 +680,7 @@ export const Dashboard: React.FC = () => {
        filter === 'clients'  ? <ClientsTab password={password} initialClientId={quickClientId} onClearInitialClient={() => setQuickClientId(null)} onAddRental={openIssueForClient} /> :
        filter === 'products' ? <ProductsTab password={password} /> :
        filter === 'sales'    ? <SalesTab password={password} /> :
+       filter === 'drafts'   ? <DraftsTab password={password} onOpenDraft={handleOpenDraft} /> :
        filter === 'calendar' ? renderCalendar() : (
         <div className="flex flex-col gap-4">
           {filtered.length === 0 && <div className="text-center text-gray-500 my-10">Тут пусто</div>}
@@ -724,7 +784,10 @@ export const Dashboard: React.FC = () => {
               </div>
             </div>
             {createError && <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg">❌ {createError}</div>}
-            <Button loading={createLoading} onClick={handleCreateSubmit}>Сохранить бронь</Button>
+            <div className="flex gap-2">
+              <Button loading={createLoading} onClick={handleSaveBookingDraft} className="bg-white border-2 border-teal-base !text-teal-base hover:bg-teal-50">В черновики</Button>
+              <Button loading={createLoading} onClick={handleCreateSubmit} className="flex-1">Сохранить бронь</Button>
+            </div>
           </div>
         </div>
       )}
@@ -735,7 +798,9 @@ export const Dashboard: React.FC = () => {
           date={issueModalDate}
           prefill={issueModalPrefill}
           isEditing={issueModalIsEditing}
-          onClose={() => setIssueModalOpen(false)}
+          draftId={issueModalDraftId}
+          password={password}
+          onClose={() => { setIssueModalOpen(false); setIssueModalDraftId(null); }}
           onSubmit={handleIssueSubmit}
         />
       )}

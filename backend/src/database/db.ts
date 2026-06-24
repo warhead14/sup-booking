@@ -120,6 +120,15 @@ export const getDb = async (): Promise<Database> => {
       cost_price_snapshot REAL NOT NULL,
       quantity INTEGER NOT NULL DEFAULT 1
     );
+
+    CREATE TABLE IF NOT EXISTS drafts (
+      id TEXT PRIMARY KEY,
+      type TEXT NOT NULL,
+      title TEXT DEFAULT '',
+      payload TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   // ─── Migrations: bookings ─────────────────────────────────────────────────
