@@ -46,7 +46,7 @@ export const Step2: React.FC = () => {
     setError('');
     
     try {
-      await apiClient.createBooking({
+      const res = await apiClient.createBooking({
         fullName: name,
         phone,
         messenger,
@@ -58,7 +58,13 @@ export const Step2: React.FC = () => {
         totalPrice: pricing.totalPrice,
         prepayment: pricing.prepayment
       });
-      navigate('/step3');
+      
+      if (res.paymentUrl) {
+        window.location.href = res.paymentUrl;
+      } else {
+        // Fallback if payment initialization fails or is skipped for some reason
+        navigate('/step3');
+      }
     } catch (err: any) {
       setError(err.message || 'Ошибка сети');
     } finally {

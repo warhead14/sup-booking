@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Step1 } from './pages/client/Step1';
 import { Step2 } from './pages/client/Step2';
 import { Step3 } from './pages/client/Step3';
+import { PaymentResult } from './pages/client/PaymentResult';
 import { Login } from './pages/admin/Login';
 import { Dashboard } from './pages/admin/Dashboard';
 
@@ -16,6 +17,7 @@ const App: React.FC = () => {
             <Route path="/" element={<Step1 />} />
             <Route path="/step2" element={<Step2 />} />
             <Route path="/step3" element={<Step3 />} />
+            <Route path="/payment-result" element={<PaymentResult />} />
             
             <Route path="/admin" element={<Login />} />
             <Route path="/admin/dashboard" element={<Dashboard />} />

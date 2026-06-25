@@ -27,6 +27,8 @@ type Booking = {
   quantity: number;
   total_price: number;
   prepayment: number;
+  payment_order_id?: string;
+  payment_status?: string;
   status: string;
   created_at: string;
 };
@@ -363,7 +365,7 @@ export const Dashboard: React.FC = () => {
   const filtered = bookings.filter(b => {
     const matchesSearch = b.customer_name.toLowerCase().includes(search.toLowerCase()) || b.customer_phone.includes(search);
     if (!matchesSearch) return false;
-    if (filter === 'pending') return b.status === 'pending';
+    if (filter === 'pending') return b.status === 'pending' || b.status === 'payment_pending';
     if (filter === 'approved') return b.status === 'approved';
     return true;
   });
@@ -383,7 +385,7 @@ export const Dashboard: React.FC = () => {
     };
 
     const pending = bookings.filter(b =>
-      b.status === 'pending' && b.start_date <= dateStr && b.end_date >= dateStr
+      (b.status === 'pending' || b.status === 'payment_pending') && b.start_date <= dateStr && b.end_date >= dateStr
     ).sort((a, b) => a.pickup_time.localeCompare(b.pickup_time));
 
     const planned = bookings.filter(b =>
@@ -603,7 +605,7 @@ export const Dashboard: React.FC = () => {
             const dayOfWeek = d.getDay();
             const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
             const dayNames = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
-            const pendingCount = bookings.filter(b => b.status === 'pending' && b.start_date <= dateStr && b.end_date >= dateStr)
+            const pendingCount = bookings.filter(b => (b.status === 'pending' || b.status === 'payment_pending') && b.start_date <= dateStr && b.end_date >= dateStr)
               .reduce((s, b) => s + b.quantity, 0);
             const planCount = bookings.filter(b => b.status === 'approved' && b.start_date <= dateStr && b.end_date >= dateStr)
               .reduce((s, b) => s + b.quantity, 0);
@@ -696,6 +698,7 @@ export const Dashboard: React.FC = () => {
                 <div className="flex flex-col items-end">
                   {b.status === 'approved' && <span className="bg-teal-light text-teal-active px-2 py-1 rounded text-xs font-bold">Одобрена</span>}
                   {b.status === 'issued' && <span className="bg-orange-100 text-orange-600 px-2 py-1 rounded text-xs font-bold">Выдана</span>}
+                  {b.status === 'payment_pending' && <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs font-bold">Ожидает оплаты</span>}
                   {b.status === 'rejected' && <span className="text-gray-400 text-xs font-bold">Отклонена</span>}
                   {b.status === 'cancelled' && <span className="text-red-500 text-xs font-bold line-through">Отменена</span>}
                   <button onClick={() => handleDeleteBooking(b.id)} className="p-1 mt-1 text-red-300 hover:text-red-500 rounded">
@@ -712,7 +715,7 @@ export const Dashboard: React.FC = () => {
                 <a href={`tel:${b.customer_phone}`} className="flex-1 max-w-[60px] h-12 bg-gray-100 flex items-center justify-center rounded-lg text-gray-700 active:bg-gray-200">
                   <Phone size={20} />
                 </a>
-                {b.status === 'pending' && (
+                {(b.status === 'pending' || b.status === 'payment_pending') && (
                   <>
                     <Button onClick={() => handleAction(b.id, 'reject')} disabled={actionLoadingId !== null} className="flex-1 !bg-gray-100 !text-gray-600 border !border-gray-200">
                       <X size={20} className="mx-auto"/>

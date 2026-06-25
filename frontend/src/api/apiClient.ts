@@ -8,13 +8,22 @@ export const apiClient = {
     return data.availableQuantity;
   },
 
-  createBooking: async (payload: any): Promise<void> => {
+  createBooking: async (payload: any): Promise<{ id: string, paymentUrl?: string }> => {
     const res = await fetch(`${API_BASE}/bookings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    if (!res.ok) throw new Error('Не удалось отправить заявку');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Не удалось отправить заявку');
+    return data;
+  },
+
+  verifyPayment: async (bookingId: string): Promise<{ success: boolean, status: string }> => {
+    const res = await fetch(`${API_BASE}/bookings/${bookingId}/verify-payment`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Не удалось проверить статус оплаты');
+    return data;
   },
 
   getAdminBookings: async (password: string): Promise<any[]> => {

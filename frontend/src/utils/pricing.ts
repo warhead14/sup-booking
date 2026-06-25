@@ -33,8 +33,6 @@ export const calculatePricing = (startDate: string, endDate: string, quantity: n
   }
 
   let totalCost = 0;
-  let firstDayCost = 0;
-  let isFirstDay = true;
   let weekdaysCount = 0;
   let weekendsCount = 0;
 
@@ -59,28 +57,11 @@ export const calculatePricing = (startDate: string, endDate: string, quantity: n
       weekdaysCount++;
     }
 
-    if (isFirstDay) {
-      firstDayCost = dailyCost;
-      isFirstDay = false;
-    }
-
     current.setDate(current.getDate() + 1);
   }
 
-  let prepayment = Math.round(firstDayCost / 2);
-  
-  if (isAdmin) {
-    const firstDayPricePerSup = firstDayCost / quantity;
-    let prepayPerSup = 300;
-    if (firstDayPricePerSup === 1200) prepayPerSup = 400;
-    else if (firstDayPricePerSup === 1000) prepayPerSup = 300;
-    else if (firstDayPricePerSup === 900) prepayPerSup = 300;
-    else if (firstDayPricePerSup === 800) prepayPerSup = 300;
-    else if (firstDayPricePerSup === 700) prepayPerSup = 300;
-    else prepayPerSup = Math.round(firstDayPricePerSup / 2);
-    
-    prepayment = prepayPerSup * quantity;
-  }
+  // Prepayment is strictly 300 RUB * quantity for the first day, as per business logic
+  let prepayment = 300 * quantity;
 
   const supWord = (q: number) => {
     const mod10 = q % 10;

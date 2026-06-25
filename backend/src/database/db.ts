@@ -51,6 +51,8 @@ export const getDb = async (): Promise<Database> => {
       total_price REAL DEFAULT 0,
       prepayment REAL DEFAULT 0,
       customer_tg_username TEXT DEFAULT '',
+      payment_order_id TEXT,
+      payment_status TEXT DEFAULT 'pending',
       status TEXT DEFAULT 'pending',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
@@ -146,6 +148,12 @@ export const getDb = async (): Promise<Database> => {
   }
   if (!bookingCols.includes('client_id')) {
     await dbInstance.run("ALTER TABLE bookings ADD COLUMN client_id TEXT REFERENCES clients(id)");
+  }
+  if (!bookingCols.includes('payment_order_id')) {
+    await dbInstance.run("ALTER TABLE bookings ADD COLUMN payment_order_id TEXT");
+  }
+  if (!bookingCols.includes('payment_status')) {
+    await dbInstance.run("ALTER TABLE bookings ADD COLUMN payment_status TEXT DEFAULT 'pending'");
   }
 
   // ─── Migrations: rentals ──────────────────────────────────────────────────
