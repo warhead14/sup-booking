@@ -27,10 +27,18 @@ type Props = {
   password?: string;
 };
 
-function addHours(time: string, hours: number): string {
+function calculateReturnTime(time: string): string {
+  if (!time || !time.includes(':')) return '16:30';
   const [h, m] = time.split(':').map(Number);
-  const nh = (h + hours) % 24;
-  return `${String(nh).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  if (isNaN(h) || isNaN(m)) return '16:30';
+  let nm = m + 30;
+  let nh = h + 6;
+  if (nm >= 60) {
+    nm -= 60;
+    nh += 1;
+  }
+  nh = nh % 24;
+  return `${String(nh).padStart(2, '0')}:${String(nm).padStart(2, '0')}`;
 }
 
 // We will use calculatePricing instead of calcPrice
@@ -45,7 +53,10 @@ export const IssueModal: React.FC<Props> = ({ date, prefill, onClose, onSubmit, 
   const [tgUsername, setTgUsername] = useState(prefill?.tgUsername || '');
   const [quantity, setQuantity] = useState(prefill?.quantity || 1);
   const [pickupTime, setPickupTime] = useState(prefill?.pickupTime || '10:00');
-  const [expectedReturn, setExpectedReturn] = useState(prefill?.expectedReturnTime || addHours(prefill?.pickupTime || '10:00', 7));
+  const [expectedReturn, setExpectedReturn] = useState(prefill?.expectedReturnTime || calculateReturnTime(prefill?.pickupTime || '10:00'));
+  const [isReturnTimeManuallyEdited, setIsReturnTimeManuallyEdited] = useState(() => 
+    prefill?.expectedReturnTime ? prefill.expectedReturnTime !== calculateReturnTime(prefill.pickupTime || '10:00') : false
+  );
   const [durationDays] = useState(prefill?.durationDays || 1);
 
   const [localDate, setLocalDate] = useState(date);
@@ -231,11 +242,30 @@ export const IssueModal: React.FC<Props> = ({ date, prefill, onClose, onSubmit, 
             </div>
           </div>
           <div className="flex-1">
-            <Input type="time" label="Время выдачи" value={pickupTime} onChange={e => setPickupTime(e.target.value)} />
+            <Input 
+              type="time" 
+              label="Время выдачи" 
+              value={pickupTime} 
+              onChange={e => {
+                const newPickup = e.target.value;
+                setPickupTime(newPickup);
+                if (!isReturnTimeManuallyEdited) {
+                  setExpectedReturn(calculateReturnTime(newPickup));
+                }
+              }} 
+            />
           </div>
         </div>
 
-        <Input type="time" label="Ожидаемый возврат" value={expectedReturn} onChange={e => setExpectedReturn(e.target.value)} />
+        <Input 
+          type="time" 
+          label="Ожидаемый возврат" 
+          value={expectedReturn} 
+          onChange={e => {
+            setExpectedReturn(e.target.value);
+            setIsReturnTimeManuallyEdited(true);
+          }} 
+        />
 
         {/* Pricing section */}
         <div className="border-t pt-3 mt-1">
