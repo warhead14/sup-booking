@@ -1,0 +1,7 @@
+#!/usr/bin/expect -f
+set timeout 20
+set cmd [lindex $argv 0]
+spawn ssh -o StrictHostKeyChecking=no root@sup-booking.ru $cmd
+expect "password:"
+send "q_uhxr6HRd+Ve^\r"
+expect eof

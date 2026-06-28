@@ -43,6 +43,7 @@ export const Step1: React.FC = () => {
   const navigate = useNavigate();
   const store = useBookingStore();
   const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState(false);
 
   // Default to today
   useEffect(() => {
@@ -64,6 +65,7 @@ export const Step1: React.FC = () => {
     if (!store.startDate || !store.endDate) return;
     
     setLoading(true);
+    setApiError(false);
     
     apiClient.checkAvailability(store.startDate, store.endDate)
       .then(qty => {
@@ -71,11 +73,14 @@ export const Step1: React.FC = () => {
         if (store.quantity > qty && qty > 0) store.setQuantity(qty);
         if (qty === 0) store.setQuantity(1); // will be blocked anyway
       })
-      .catch(() => store.setAvailableQuantity(0))
+      .catch(() => {
+        setApiError(true);
+        store.setAvailableQuantity(null);
+      })
       .finally(() => setLoading(false));
   }, [store.startDate, store.endDate]);
 
-  const isValid = store.availableQuantity !== null && store.availableQuantity > 0 && store.quantity <= store.availableQuantity;
+  const isValid = !apiError && store.availableQuantity !== null && store.availableQuantity > 0 && store.quantity <= store.availableQuantity;
 
   const durationDays = store.startDate && store.endDate 
     ? Math.round((new Date(store.endDate + 'T12:00:00').getTime() - new Date(store.startDate + 'T12:00:00').getTime()) / (1000 * 3600 * 24)) + 1
@@ -140,11 +145,11 @@ export const Step1: React.FC = () => {
         options={generateTimeSlots()} 
       />
 
-
-
-      <div className={`p-4 rounded-xl border transition-colors ${store.availableQuantity === 0 ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200'}`}>
+      <div className={`p-4 rounded-xl border transition-colors ${apiError || store.availableQuantity === 0 ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200'}`}>
         {loading ? (
           <span className="text-gray-500">Считаем свободные доски...</span>
+        ) : apiError ? (
+          <span className="text-red-500 font-medium">Не удалось проверить доступность, попробуйте позже</span>
         ) : store.availableQuantity === null ? (
           <span className="text-gray-500">Выберите даты</span>
         ) : store.availableQuantity === 0 ? (

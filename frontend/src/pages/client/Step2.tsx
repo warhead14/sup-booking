@@ -127,22 +127,28 @@ export const Step2: React.FC = () => {
 
       {error && <div className="text-red-500 text-sm text-center">{error}</div>}
 
-      <div className="p-4 bg-teal-50 border border-teal-100 rounded-xl flex flex-col gap-1">
-        <div className="flex justify-between items-center text-teal-900">
-          <span className="font-medium">Итоговая стоимость</span>
-          <span className="font-bold text-lg">{pricing.totalPrice.toLocaleString('ru')} ₽</span>
+      <div className="p-4 bg-teal-50 border border-teal-100 rounded-xl flex flex-col gap-3">
+        <div className="flex justify-between items-center text-teal-900 text-sm">
+          <span>Итого</span>
+          <span className="font-bold">{pricing.totalPrice.toLocaleString('ru')} ₽</span>
         </div>
-        {pricing.explanation && (
-          <div className="text-xs text-teal-700/70">
-            {pricing.explanation}
-          </div>
-        )}
+        <div className="flex justify-between items-center text-teal-900 text-sm">
+          <span>Сейчас к оплате</span>
+          <span className="font-bold">{pricing.prepayment.toLocaleString('ru')} ₽</span>
+        </div>
+        <div className="flex justify-between items-center text-teal-900 text-sm border-t border-teal-200/50 pt-2">
+          <span className="font-medium">Остаток при получении</span>
+          <span className="font-bold text-lg">{(pricing.totalPrice - pricing.prepayment).toLocaleString('ru')} ₽</span>
+        </div>
       </div>
 
-      <div className="mt-8">
+      <div className="mt-8 flex flex-col gap-3">
         <Button onClick={handleSubmit} disabled={!isValid} loading={loading}>
-          Отправить заявку
+          Оплатить {pricing.prepayment.toLocaleString('ru')} ₽
         </Button>
+        <div className="text-xs text-gray-500 text-center leading-relaxed">
+          После оплаты бронь подтвердится автоматически.
+        </div>
       </div>
     </div>
   );

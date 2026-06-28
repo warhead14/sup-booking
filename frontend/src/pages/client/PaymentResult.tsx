@@ -54,7 +54,7 @@ export const PaymentResult: React.FC = () => {
           </div>
           <h1 className="text-2xl font-bold">Оплата прошла успешно!</h1>
           <p className="text-gray-600 text-lg leading-relaxed px-4">
-            Ваша бронь подтверждена. Мы скоро свяжемся с вами.
+            Предоплата получена, бронь подтверждена. Мы скоро свяжемся с вами.
           </p>
           <button 
             onClick={() => { store.reset(); navigate('/'); }} 
@@ -73,7 +73,7 @@ export const PaymentResult: React.FC = () => {
           </div>
           <h1 className="text-2xl font-bold">Проблема с оплатой</h1>
           <p className="text-gray-600 text-lg leading-relaxed px-4">
-            Не удалось подтвердить оплату. Пожалуйста, попробуйте снова или свяжитесь с нами.
+            Оплата не завершена, бронь пока не подтверждена. Пожалуйста, попробуйте снова или свяжитесь с нами.
           </p>
           <button 
             onClick={() => { navigate('/'); }} 

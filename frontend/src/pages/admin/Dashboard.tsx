@@ -695,21 +695,30 @@ export const Dashboard: React.FC = () => {
                     {b.customer_phone} ({b.customer_messenger}{b.customer_tg_username ? `: @${b.customer_tg_username}` : ''})
                   </span>
                 </div>
-                <div className="flex flex-col items-end">
+                <div className="flex flex-col items-end gap-1">
                   {b.status === 'approved' && <span className="bg-teal-light text-teal-active px-2 py-1 rounded text-xs font-bold">Одобрена</span>}
                   {b.status === 'issued' && <span className="bg-orange-100 text-orange-600 px-2 py-1 rounded text-xs font-bold">Выдана</span>}
                   {b.status === 'payment_pending' && <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs font-bold">Ожидает оплаты</span>}
                   {b.status === 'rejected' && <span className="text-gray-400 text-xs font-bold">Отклонена</span>}
                   {b.status === 'cancelled' && <span className="text-red-500 text-xs font-bold line-through">Отменена</span>}
+                  {b.payment_status === 'paid' && <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold flex items-center gap-1"><CheckCircle size={12}/> Оплачена</span>}
                   <button onClick={() => handleDeleteBooking(b.id)} className="p-1 mt-1 text-red-300 hover:text-red-500 rounded">
                     <Trash2 size={16} />
                   </button>
                 </div>
               </div>
-              <div className="bg-gray-50 rounded-lg p-3 text-sm flex justify-between">
-                <div><p className="text-gray-500">Даты</p><p className="font-medium">{formatDateUI(b.start_date)} <br/> {formatDateUI(b.end_date)}</p></div>
-                <div><p className="text-gray-500">Время</p><p className="font-medium">{b.pickup_time}</p></div>
-                <div><p className="text-gray-500">Кол-во</p><p className="font-bold text-teal-base text-lg">{b.quantity} шт.</p></div>
+              <div className="bg-gray-50 rounded-lg p-3 text-sm flex flex-col gap-2">
+                <div className="flex justify-between">
+                  <div><p className="text-gray-500">Даты</p><p className="font-medium">{formatDateUI(b.start_date)} <br/> {formatDateUI(b.end_date)}</p></div>
+                  <div><p className="text-gray-500">Время</p><p className="font-medium">{b.pickup_time}</p></div>
+                  <div><p className="text-gray-500">Кол-во</p><p className="font-bold text-teal-base text-lg">{b.quantity} шт.</p></div>
+                </div>
+                {b.payment_status === 'paid' && (
+                  <div className="border-t border-gray-200 pt-2 flex justify-between text-xs">
+                    <span className="text-gray-600">Предоплата: <span className="font-bold text-green-600">{b.prepayment} ₽</span></span>
+                    <span className="text-gray-600">Остаток при выдаче: <span className="font-bold text-gray-900">{b.total_price - b.prepayment} ₽</span></span>
+                  </div>
+                )}
               </div>
               <div className="flex gap-2 mt-2">
                 <a href={`tel:${b.customer_phone}`} className="flex-1 max-w-[60px] h-12 bg-gray-100 flex items-center justify-center rounded-lg text-gray-700 active:bg-gray-200">
