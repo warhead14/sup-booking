@@ -28,7 +28,8 @@ export class PaymentService {
       orderNumber,
       amount: amount.toString(),
       returnUrl,
-      description
+      description,
+      pageView: 'MOBILE'
     });
 
     console.log(`[PaymentService] Initiating payment for order ${orderNumber}, amount: ${amount}`);
