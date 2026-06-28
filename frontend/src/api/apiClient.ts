@@ -135,6 +135,13 @@ export const apiClient = {
     return res.json();
   },
 
+  checkPhone: async (phone: string): Promise<boolean> => {
+    const res = await fetch(`${API_BASE}/check-phone?phone=${encodeURIComponent(phone)}`);
+    if (!res.ok) return false;
+    const data = await res.json();
+    return data.exists === true;
+  },
+
   deleteBooking: async (password: string, id: string): Promise<void> => {
     console.log('🚀 [API] DELETE BOOKING REQUEST', { id, url: `${API_BASE}/admin/bookings/${id}` });
     const res = await fetch(`${API_BASE}/admin/bookings/${id}`, {

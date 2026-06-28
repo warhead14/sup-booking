@@ -6,9 +6,32 @@ import { sendTelegramNotification } from '../services/telegram.service';
 import { PaymentService } from '../services/payment.service';
 import { normalizePhone } from '../utils/phone';
 import crypto from 'crypto';
+import { ClientService } from '../services/client.service';
 
 export class BookingController {
   
+  static async checkPhone(req: Request, res: Response) {
+    try {
+      const { phone } = req.query;
+      if (!phone || typeof phone !== 'string') {
+        return res.status(400).json({ error: 'Phone is required' });
+      }
+      
+      const norm = normalizePhone(phone);
+      if (!norm || norm.length < 10) {
+        return res.json({ exists: false });
+      }
+
+      const db = await getDb();
+      const existing = await db.get('SELECT id FROM clients WHERE phone_normalized = ?', [norm]);
+      
+      res.json({ exists: !!existing });
+    } catch (err: any) {
+      console.error('[API] Check Phone error:', err);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
   static async checkAvailability(req: Request, res: Response, next: NextFunction) {
     try {
       const { startDate, endDate } = req.query as { startDate: string, endDate: string };
@@ -29,11 +52,17 @@ export class BookingController {
       const db = await getDb();
       const id = crypto.randomUUID();
 
+      const clientId = await ClientService.resolveClient(db, {
+        name: data.fullName,
+        phone: data.phone,
+        tgUsername: data.tgUsername
+      });
+
       // We'll set the initial status to payment_pending
       await db.run(
-        `INSERT INTO bookings (id, customer_name, customer_phone, customer_messenger, customer_tg_username, start_date, end_date, pickup_time, quantity, total_price, prepayment, payment_status, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'payment_pending')`,
-        [id, data.fullName, data.phone, data.messenger, data.tgUsername, data.startDate, data.endDate, data.pickupTime, data.quantity, data.totalPrice, data.prepayment]
+        `INSERT INTO bookings (id, client_id, customer_name, customer_phone, customer_messenger, customer_tg_username, start_date, end_date, pickup_time, quantity, total_price, prepayment, payment_status, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'payment_pending')`,
+        [id, clientId, data.fullName, data.phone, data.messenger, data.tgUsername, data.startDate, data.endDate, data.pickupTime, data.quantity, data.totalPrice, data.prepayment]
       );
 
       // Initialize payment with Alfa-Bank

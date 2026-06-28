@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { apiClient } from '../../api/apiClient';
 import { normalizePhone } from '../../utils/phone';
 import { PhoneInput } from '../../components/PhoneInput';
@@ -176,17 +176,26 @@ const NewSaleModal: React.FC<{
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  // Auto-lookup client by phone
   const existingClient = useMemo(() => {
     const norm = normalizePhone(clientPhone);
-    if (!norm || norm.length < 7) return null;
+    if (!norm) return null;
     return clients.find(c => normalizePhone(c.phone) === norm) || null;
   }, [clientPhone, clients]);
 
-  // If client found, auto-fill name if name is empty
+  const autofilledNameRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (existingClient && !clientName) {
-      setClientName(existingClient.name);
+    if (existingClient && existingClient.name) {
+      const shortName = existingClient.name.split(' ')[0];
+      if (!clientName) {
+        setClientName(shortName);
+        autofilledNameRef.current = shortName;
+      }
+    } else if (!existingClient && autofilledNameRef.current) {
+      if (clientName === autofilledNameRef.current) {
+        setClientName('');
+      }
+      autofilledNameRef.current = null;
     }
   }, [existingClient]);
 

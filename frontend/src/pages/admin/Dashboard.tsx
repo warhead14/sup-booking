@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../../api/apiClient';
 import { Button } from '../../components/Button';
@@ -13,6 +13,7 @@ import { DraftsTab } from './DraftsTab';
 import { formatDateUI, formatRangeUI } from '../../utils/dateFormatter';
 import { calculatePricing } from '../../utils/pricing';
 import { Phone, Check, X, LogOut, Ban, ChevronLeft, ChevronRight, ArrowLeft, Plus, Waves, CheckCircle, Ship, Clock, Trash2, Sun, Moon } from 'lucide-react';
+import { normalizePhone } from '../../utils/phone';
 
 type Booking = {
   id: string;
@@ -87,6 +88,7 @@ export const Dashboard: React.FC = () => {
   const [filter, setFilter] = useState<'pending'|'approved'|'calendar'|'stats'|'clients'|'products'|'sales'|'drafts'>('pending');
   const [search, setSearch] = useState('');
   const [quickClientId, setQuickClientId] = useState<string | null>(null);
+  const [clients, setClients] = useState<any[]>([]);
   
   const [calendarWeekStart, setCalendarWeekStart] = useState<Date>(() => {
     const now = new Date();
@@ -176,12 +178,14 @@ export const Dashboard: React.FC = () => {
 
   const loadAll = async () => {
     try {
-      const [bData, rData] = await Promise.all([
+      const [bData, rData, cData] = await Promise.all([
         apiClient.getAdminBookings(password),
-        apiClient.getAdminRentals(password)
+        apiClient.getAdminRentals(password),
+        apiClient.getClients(password)
       ]);
       setBookings(bData);
       setRentals(rData);
+      setClients(cData);
     } catch (err: any) {
       if (err.message === 'Неверный пароль') { localStorage.removeItem('admin_pwd'); navigate('/admin'); }
       else setError('Не удалось загрузить данные');
@@ -247,6 +251,31 @@ export const Dashboard: React.FC = () => {
     finally { setCreateLoading(false); }
   };
 
+  // Autofill name based on phone for bookings
+  const activeClientBooking = useMemo(() => {
+    const norm = normalizePhone(createFormData.phone);
+    if (!norm) return null;
+    return clients.find(c => normalizePhone(c.phone) === norm || (c.phoneNormalized && c.phoneNormalized === norm)) || null;
+  }, [createFormData.phone, clients]);
+
+  const autofilledNameRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (activeClientBooking && activeClientBooking.name) {
+      const shortName = activeClientBooking.name.split(' ')[0];
+      if (!createFormData.fullName) {
+        setCreateFormData(prev => ({ ...prev, fullName: shortName }));
+        autofilledNameRef.current = shortName;
+      }
+    } else if (!activeClientBooking && autofilledNameRef.current) {
+      // If we autofilled it before, and now it unmatched, and user hasn't changed it manually
+      if (createFormData.fullName === autofilledNameRef.current) {
+        setCreateFormData(prev => ({ ...prev, fullName: '' }));
+      }
+      autofilledNameRef.current = null;
+    }
+  }, [activeClientBooking]); // Intentionally not including createFormData.fullName to avoid loops
+
   const handleIssueSubmit = async (data: any) => {
     if (issueModalIsEditing && data.id) {
       await apiClient.updateRental(password, data.id, data);
@@ -269,14 +298,12 @@ export const Dashboard: React.FC = () => {
 
   const handleDeleteBooking = async (id: string) => {
     if (!window.confirm('Удалить бронь? Это действие нельзя отменить.')) return;
-    console.log('🔘 [UI] Delete Booking clicked for ID:', id);
     try { await apiClient.deleteBooking(password, id); await loadAll(); }
     catch (err: any) { alert(`❌ ${err.message}`); }
   };
 
   const handleDeleteRental = async (id: string) => {
     if (!window.confirm('Удалить выдачу? Это действие нельзя отменить.')) return;
-    console.log('🔘 [UI] Delete Rental clicked for ID:', id);
     try { await apiClient.deleteRental(password, id); await loadAll(); }
     catch (err: any) { alert(`❌ ${err.message}`); }
   };
@@ -422,7 +449,6 @@ export const Dashboard: React.FC = () => {
           <div className="flex-1 min-w-[70px] bg-green-50 rounded-lg p-2 shrink-0"><div className="text-xs text-green-500">Вернулись</div><div className="font-bold text-green-600">{returned.length}</div></div>
         </div>
 
-        {/* PENDING */}
         {pending.length > 0 && (
           <>
             <SectionHeader icon={<Clock size={16}/>} title="Новые заявки" count={pending.length} color="text-amber-600" />
@@ -460,7 +486,6 @@ export const Dashboard: React.FC = () => {
           </>
         )}
 
-        {/* PLANNED */}
         <SectionHeader icon={<CheckCircle size={16}/>} title="Запланированные" count={planned.length} color="text-blue-600" />
         {planned.length === 0 ? (
           <div className="text-center text-gray-400 text-sm py-3">Нет броней</div>
@@ -497,7 +522,6 @@ export const Dashboard: React.FC = () => {
           );
         })}
 
-        {/* ON WATER */}
         <SectionHeader icon={<Waves size={16}/>} title="На воде" count={onWater.length} color="text-orange-600" />
         {onWater.length === 0 ? (
           <div className="text-center text-gray-400 text-sm py-3">Никого на воде</div>
@@ -552,7 +576,6 @@ export const Dashboard: React.FC = () => {
           );
         })}
 
-        {/* RETURNED */}
         {returned.length > 0 && (
           <>
             <SectionHeader icon={<Check size={16}/>} title="Завершённые" count={returned.length} color="text-green-600" />
@@ -809,6 +832,7 @@ export const Dashboard: React.FC = () => {
         <IssueModal
           date={issueModalDate}
           prefill={issueModalPrefill}
+          clients={clients}
           isEditing={issueModalIsEditing}
           draftId={issueModalDraftId}
           password={password}

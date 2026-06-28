@@ -4,6 +4,7 @@ import { AvailabilityService } from '../services/availability.service';
 import { updateStatusSchema, adminCreateBookingSchema, issueRentalSchema } from '../validators/booking.validator';
 import { normalizePhone } from '../utils/phone';
 import crypto from 'crypto';
+import { ClientService } from '../services/client.service';
 
 export class AdminController {
   
@@ -69,10 +70,16 @@ export class AdminController {
       const db = await getDb();
       const id = crypto.randomUUID();
 
+      const clientId = await ClientService.resolveClient(db, {
+        name: data.fullName,
+        phone: data.phone,
+        tgUsername: data.tgUsername
+      });
+
       await db.run(
-        `INSERT INTO bookings (id, customer_name, customer_phone, customer_messenger, customer_tg_username, start_date, end_date, pickup_time, quantity, total_price, prepayment, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved')`,
-        [id, data.fullName, data.phone, data.messenger, data.tgUsername, data.startDate, data.endDate, data.pickupTime, data.quantity, data.totalPrice, data.prepayment]
+        `INSERT INTO bookings (id, client_id, customer_name, customer_phone, customer_messenger, customer_tg_username, start_date, end_date, pickup_time, quantity, total_price, prepayment, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved')`,
+        [id, clientId, data.fullName, data.phone, data.messenger, data.tgUsername, data.startDate, data.endDate, data.pickupTime, data.quantity, data.totalPrice, data.prepayment]
       );
 
       const booking = await db.get('SELECT * FROM bookings WHERE id = ?', [id]);
@@ -101,33 +108,12 @@ export class AdminController {
       const id = crypto.randomUUID();
 
       // ── Resolve or create client ────────────────────────────────────────
-      let clientId: string | null = null;
       const phone = (data.customerPhone || '').toString().trim();
-      if (phone) {
-        const norm = normalizePhone(phone);
-        if (norm) {
-          const existing = await db.get(
-            'SELECT id FROM clients WHERE phone_normalized = ?', [norm]
-          );
-          if (existing) {
-            clientId = existing.id;
-            // Keep client name up-to-date with the most recent one
-            if (data.customerName) {
-              await db.run(
-                'UPDATE clients SET name = ?, telegram_username = COALESCE(NULLIF(?, \'\'), telegram_username), updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-                [data.customerName, data.customerTgUsername || '', clientId]
-              );
-            }
-          } else if (data.customerName) {
-            clientId = crypto.randomUUID();
-            await db.run(
-              `INSERT INTO clients (id, name, phone, phone_normalized, telegram_username, note)
-               VALUES (?, ?, ?, ?, ?, '')`,
-              [clientId, data.customerName.trim(), phone, norm, data.customerTgUsername || '']
-            );
-          }
-        }
-      }
+      const clientId = await ClientService.resolveClient(db, {
+        name: data.customerName,
+        phone: phone,
+        tgUsername: data.customerTgUsername
+      });
 
       await db.run(
         `INSERT INTO rentals (id, booking_id, client_id, customer_name, customer_phone, customer_tg_username, quantity, pickup_time, rental_date, end_date, expected_return_time, prepayment, payment_on_site, total_price, penalty, payment_method, deposit_types, deposit_note, extra_gear, status)
@@ -183,29 +169,14 @@ export class AdminController {
 
       let clientId: string | null = existingRental.client_id;
       const phone = (data.customerPhone || '').toString().trim();
-      if (phone) {
-        const norm = normalizePhone(phone);
-        if (norm) {
-          const existingClient = await db.get(
-            'SELECT id FROM clients WHERE phone_normalized = ?', [norm]
-          );
-          if (existingClient) {
-            clientId = existingClient.id;
-            if (data.customerName) {
-              await db.run(
-                'UPDATE clients SET name = ?, telegram_username = COALESCE(NULLIF(?, \'\'), telegram_username), updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-                [data.customerName, data.customerTgUsername || '', clientId]
-              );
-            }
-          } else if (data.customerName) {
-            clientId = crypto.randomUUID();
-            await db.run(
-              `INSERT INTO clients (id, name, phone, phone_normalized, telegram_username, note)
-               VALUES (?, ?, ?, ?, ?, '')`,
-              [clientId, data.customerName.trim(), phone, norm, data.customerTgUsername || '']
-            );
-          }
-        }
+      
+      const newClientId = await ClientService.resolveClient(db, {
+        name: data.customerName,
+        phone: phone,
+        tgUsername: data.customerTgUsername
+      });
+      if (newClientId) {
+        clientId = newClientId;
       }
 
       await db.run(

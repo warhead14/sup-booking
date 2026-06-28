@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { PhoneInput } from '../../components/PhoneInput';
+import { normalizePhone } from '../../utils/phone';
 import { X, Plus } from 'lucide-react';
 
 import { calculatePricing } from '../../utils/pricing';
@@ -25,6 +26,7 @@ type Props = {
   isEditing?: boolean;
   draftId?: string | null;
   password?: string;
+  clients?: any[];
 };
 
 function calculateReturnTime(time: string): string {
@@ -45,7 +47,7 @@ function calculateReturnTime(time: string): string {
 
 import { apiClient } from '../../api/apiClient';
 
-export const IssueModal: React.FC<Props> = ({ date, prefill, onClose, onSubmit, isEditing, draftId, password }) => {
+export const IssueModal: React.FC<Props> = ({ date, prefill, onClose, onSubmit, isEditing, draftId, password, clients = [] }) => {
   const [loading, setLoading] = useState(false);
   const [_error, setError] = useState('');
   const [name, setName] = useState(prefill?.name || '');
@@ -112,6 +114,30 @@ export const IssueModal: React.FC<Props> = ({ date, prefill, onClose, onSubmit, 
   const toggleDeposit = (d: string) => {
     setDepositTypes(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
   };
+
+  // Autofill name based on phone for rentals
+  const activeClientRental = React.useMemo(() => {
+    const norm = normalizePhone(phone);
+    if (!norm) return null;
+    return clients.find(c => normalizePhone(c.phone) === norm || (c.phoneNormalized && c.phoneNormalized === norm)) || null;
+  }, [phone, clients]);
+
+  const autofilledNameRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (activeClientRental && activeClientRental.name) {
+      const shortName = activeClientRental.name.split(' ')[0];
+      if (!name) {
+        setName(shortName);
+        autofilledNameRef.current = shortName;
+      }
+    } else if (!activeClientRental && autofilledNameRef.current) {
+      if (name === autofilledNameRef.current) {
+        setName('');
+      }
+      autofilledNameRef.current = null;
+    }
+  }, [activeClientRental]);
 
   const setGearQty = (g: string, qty: number) => {
     setGear(prev => {

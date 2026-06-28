@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { getDb } from '../database/db';
 import { normalizePhone } from '../utils/phone';
 import crypto from 'crypto';
+import { ClientService } from '../services/client.service';
 
 export class SalesController {
 
@@ -139,22 +140,10 @@ export class SalesController {
       let resolvedClientId: string | null = clientId || null;
 
       if (!resolvedClientId && clientPhone) {
-        const norm = normalizePhone(clientPhone);
-        if (norm) {
-          const existing = await db.get(
-            'SELECT id FROM clients WHERE phone_normalized = ?', [norm]
-          );
-          if (existing) {
-            resolvedClientId = existing.id;
-          } else if (clientName) {
-            resolvedClientId = crypto.randomUUID();
-            await db.run(
-              `INSERT INTO clients (id, name, phone, phone_normalized, telegram_username, note)
-               VALUES (?, ?, ?, ?, '', '')`,
-              [resolvedClientId, clientName.trim(), clientPhone, norm]
-            );
-          }
-        }
+        resolvedClientId = await ClientService.resolveClient(db, {
+          name: clientName,
+          phone: clientPhone
+        });
       }
 
       // Calculate totals

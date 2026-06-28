@@ -7,6 +7,7 @@
  *   9991234567           →  79991234567
  */
 export function normalizePhone(phone: string): string {
+  if (!phone) return '';
   // Strip everything except digits
   const digits = phone.replace(/\D/g, '');
 

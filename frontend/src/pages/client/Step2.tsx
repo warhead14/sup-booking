@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBookingStore } from '../../store/bookingStore';
 import { formatRangeUI } from '../../utils/dateFormatter';
@@ -20,6 +20,18 @@ export const Step2: React.FC = () => {
   const [tgUsername, setTgUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isRecognized, setIsRecognized] = useState(false);
+
+  useEffect(() => {
+    setIsRecognized(false);
+    if (phone.length === 18) {
+      apiClient.checkPhone(phone).then(exists => {
+        setIsRecognized(exists);
+      }).catch(err => {
+        console.error('Failed to check phone:', err);
+      });
+    }
+  }, [phone]);
 
   // Protect against entering Step2 directly
   if (!store.availableQuantity) {
@@ -95,11 +107,18 @@ export const Step2: React.FC = () => {
           value={name} 
           onChange={(e) => setName(e.target.value)} 
         />
-        <PhoneInput 
-          label="Телефон" 
-          value={phone} 
-          onChange={setPhone} 
-        />
+        <div>
+          <PhoneInput 
+            label="Телефон" 
+            value={phone} 
+            onChange={setPhone} 
+          />
+          {isRecognized && (
+            <div className="text-[13px] text-teal-600 font-medium mt-1.5 ml-1">
+              Рады снова видеть — мы вас узнали.
+            </div>
+          )}
+        </div>
         <Select 
           label="Удобный мессенджер" 
           value={messenger}
