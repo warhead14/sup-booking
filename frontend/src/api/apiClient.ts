@@ -65,6 +65,29 @@ export const apiClient = {
     if (!res.ok) throw new Error('Не удалось создать заявку');
   },
 
+  updateBooking: async (password: string, id: string, payload: any): Promise<void> => {
+    const res = await fetch(`${API_BASE}/admin/bookings/${id}`, {
+      method: 'PUT',
+      headers: { 
+        'Content-Type': 'application/json',
+        'x-admin-password': password 
+      },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      let msg = 'Не удалось обновить заявку. Проверьте правильность заполнения полей.';
+      try {
+        const body = await res.json();
+        if (body.error === 'Validation Error') {
+          msg = 'Пожалуйста, заполните все обязательные поля корректно.';
+        } else if (body.message || body.error) {
+          msg = body.message || body.error;
+        }
+      } catch (e) {}
+      throw new Error(msg);
+    }
+  },
+
   getAdminRentals: async (password: string): Promise<any[]> => {
     const res = await fetch(`${API_BASE}/admin/rentals`, {
       headers: { 'x-admin-password': password }

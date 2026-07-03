@@ -5,6 +5,7 @@ import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { PhoneInput } from '../../components/PhoneInput';
 import { IssueModal } from './IssueModal';
+import { EditBookingModal } from './EditBookingModal';
 import { StatsTab } from './StatsTab';
 import { ClientsTab } from './ClientsTab';
 import { ProductsTab } from './ProductsTab';
@@ -12,7 +13,7 @@ import { SalesTab } from './SalesTab';
 import { DraftsTab } from './DraftsTab';
 import { formatDateUI, formatRangeUI } from '../../utils/dateFormatter';
 import { calculatePricing } from '../../utils/pricing';
-import { Phone, Check, X, LogOut, Ban, ChevronLeft, ChevronRight, ArrowLeft, Plus, Waves, CheckCircle, Ship, Clock, Trash2, Sun, Moon } from 'lucide-react';
+import { Phone, Check, X, LogOut, Ban, ChevronLeft, ChevronRight, ArrowLeft, Plus, Waves, CheckCircle, Ship, Clock, Trash2, Sun, Moon, Edit } from 'lucide-react';
 import { normalizePhone } from '../../utils/phone';
 
 type Booking = {
@@ -118,6 +119,8 @@ export const Dashboard: React.FC = () => {
   };
   
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  
+  const [editingBooking, setEditingBooking] = useState<any>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
   const [createFormData, setCreateFormData] = useState({
@@ -249,6 +252,17 @@ export const Dashboard: React.FC = () => {
       await loadAll();
     } catch (err: any) { setCreateError(err.message || 'Ошибка сохранения черновика'); }
     finally { setCreateLoading(false); }
+  };
+
+  const handleEditBookingSubmit = async (data: any) => {
+    if (!password) return;
+    try {
+      await apiClient.updateBooking(password, editingBooking.id, data);
+      setEditingBooking(null);
+      await loadAll();
+    } catch (e: any) {
+      throw e;
+    }
   };
 
   // Autofill name based on phone for bookings
@@ -514,9 +528,14 @@ export const Dashboard: React.FC = () => {
                 <button onClick={() => openIssueFromBooking(b)} className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-bold shadow-sm active:bg-orange-600 transition-colors">
                   Выдать
                 </button>
-                <button onClick={() => handleDeleteBooking(b.id)} className="p-2 text-red-400 border border-red-100 rounded-lg flex justify-center hover:bg-red-50">
-                  <Trash2 size={16} />
-                </button>
+                <div className="flex gap-2">
+                  <button onClick={() => setEditingBooking(b)} className="p-2 flex-1 text-gray-500 border border-gray-200 rounded-lg flex justify-center hover:bg-gray-50 active:bg-gray-100 transition-colors">
+                    <Edit size={16} />
+                  </button>
+                  <button onClick={() => handleDeleteBooking(b.id)} className="p-2 text-red-400 border border-red-100 rounded-lg flex justify-center hover:bg-red-50">
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
             </div>
           );
@@ -831,13 +850,21 @@ export const Dashboard: React.FC = () => {
       {issueModalOpen && (
         <IssueModal
           date={issueModalDate}
-          prefill={issueModalPrefill}
+          password={password!}
           clients={clients}
+          prefill={issueModalPrefill}
           isEditing={issueModalIsEditing}
           draftId={issueModalDraftId}
-          password={password}
           onClose={() => { setIssueModalOpen(false); setIssueModalDraftId(null); }}
           onSubmit={handleIssueSubmit}
+        />
+      )}
+
+      {editingBooking && (
+        <EditBookingModal
+          booking={editingBooking}
+          onClose={() => setEditingBooking(null)}
+          onSubmit={handleEditBookingSubmit}
         />
       )}
     </div>

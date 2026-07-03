@@ -7,18 +7,20 @@ export class AvailabilityService {
   /**
    * Calculates minimum available SUPs for a given date range.
    */
-  static async checkAvailability(startDate: string, endDate: string): Promise<number> {
+  static async checkAvailability(startDate: string, endDate: string, excludeBookingId?: string): Promise<number> {
     const db = await getDb();
     const datesToCheck = getDatesInRange(startDate, endDate);
     
     // We only care about approved bookings
-    const approvedBookings = await db.all(
-      `SELECT start_date, end_date, quantity 
-       FROM bookings 
-       WHERE status = 'approved' 
-       AND (start_date <= ? AND end_date >= ?)`,
-      [endDate, startDate]
-    );
+    let query = `SELECT start_date, end_date, quantity FROM bookings WHERE status = 'approved' AND (start_date <= ? AND end_date >= ?)`;
+    const params: any[] = [endDate, startDate];
+    
+    if (excludeBookingId) {
+      query += ` AND id != ?`;
+      params.push(excludeBookingId);
+    }
+    
+    const approvedBookings = await db.all(query, params);
 
     const onWaterRentals = await db.all(
       `SELECT rental_date as start_date, IFNULL(end_date, rental_date) as end_date, quantity 

@@ -89,6 +89,83 @@ export class AdminController {
     }
   }
 
+  static async updateBooking(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      // We import adminUpdateBookingSchema at the top later, actually we can just require or import it.
+      // Wait, let's just use it, since we'll add it to the import list.
+      const db = await getDb();
+      
+      const existingBooking = await db.get('SELECT * FROM bookings WHERE id = ?', [id]);
+      if (!existingBooking) {
+        return res.status(404).json({ error: 'Booking not found' });
+      }
+
+      // We will parse with the schema we just added. But I need to make sure the schema is imported.
+      // Actually, to avoid import issues, I can require it or just trust that we'll add the import.
+      const { adminUpdateBookingSchema } = require('../validators/booking.validator');
+      const data = adminUpdateBookingSchema.parse(req.body);
+
+      // Check availability excluding this booking
+      const available = await AvailabilityService.checkAvailability(data.startDate, data.endDate, id);
+      if (available < data.quantity) {
+        return res.status(409).json({ 
+          error: 'Overbooking', 
+          message: `Редактирование невозможно. На выбранные даты свободно только ${available} сапбордов.` 
+        });
+      }
+
+      let clientId: string | null = existingBooking.client_id;
+      const phone = data.customerPhone.trim();
+      
+      const newClientId = await ClientService.resolveClient(db, {
+        name: data.customerName,
+        phone: phone,
+        tgUsername: data.customerTgUsername
+      });
+      if (newClientId) {
+        clientId = newClientId;
+      }
+
+      await db.run(
+        `UPDATE bookings SET
+          client_id = ?,
+          customer_name = ?,
+          customer_phone = ?,
+          customer_messenger = ?,
+          customer_tg_username = ?,
+          start_date = ?,
+          end_date = ?,
+          pickup_time = ?,
+          quantity = ?,
+          total_price = ?,
+          prepayment = ?,
+          note = ?
+         WHERE id = ?`,
+        [
+          clientId,
+          data.customerName,
+          phone,
+          data.customerMessenger,
+          data.customerTgUsername,
+          data.startDate,
+          data.endDate,
+          data.pickupTime,
+          data.quantity,
+          data.totalPrice,
+          data.prepayment,
+          data.note,
+          id
+        ]
+      );
+
+      const booking = await db.get('SELECT * FROM bookings WHERE id = ?', [id]);
+      res.json({ success: true, booking });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   static async getRentals(req: Request, res: Response, next: NextFunction) {
     try {
       const db = await getDb();

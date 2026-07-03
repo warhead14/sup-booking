@@ -38,6 +38,20 @@ export const adminCreateBookingSchema = z.object({
   tgUsername: z.string().optional().default('')
 });
 
+export const adminUpdateBookingSchema = z.object({
+  customerName: z.string().optional().default(''),
+  customerPhone: z.string().optional().default(''),
+  customerMessenger: z.string().optional().default(''),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  pickupTime: z.string().regex(/^\d{2}:\d{2}$/),
+  quantity: z.number().int().min(1).max(50),
+  totalPrice: z.number().optional().default(0),
+  prepayment: z.number().optional().default(0),
+  customerTgUsername: z.string().optional().default(''),
+  note: z.string().optional().default('')
+});
+
 export const issueRentalSchema = z.object({
   bookingId: z.string().optional(),
   customerName: z.string().optional().default(''),

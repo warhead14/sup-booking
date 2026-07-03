@@ -11,6 +11,7 @@ router.use(adminAuthMiddleware);
 
 router.get('/bookings', AdminController.getBookings);
 router.post('/bookings', AdminController.createBooking);
+router.put('/bookings/:id', AdminController.updateBooking);
 router.patch('/bookings/:id/status', AdminController.updateStatus);
 router.delete('/bookings/:id', AdminController.deleteBooking);
 

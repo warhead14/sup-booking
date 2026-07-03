@@ -155,6 +155,9 @@ export const getDb = async (): Promise<Database> => {
   if (!bookingCols.includes('payment_status')) {
     await dbInstance.run("ALTER TABLE bookings ADD COLUMN payment_status TEXT DEFAULT 'pending'");
   }
+  if (!bookingCols.includes('note')) {
+    await dbInstance.run("ALTER TABLE bookings ADD COLUMN note TEXT DEFAULT ''");
+  }
 
   // ─── Migrations: rentals ──────────────────────────────────────────────────
   const pragmaRentals = await dbInstance.all("PRAGMA table_info(rentals)");
