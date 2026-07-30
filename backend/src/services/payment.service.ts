@@ -1,5 +1,6 @@
 // import fetch from 'node-fetch';
-
+import { getDb } from '../database/db';
+import { NotificationService } from './notification.service';
 export class PaymentService {
   private static get baseUrl() {
     return process.env.ALFABANK_API_URL || 'https://pay.alfabank.ru/payment/rest/';
@@ -75,5 +76,59 @@ export class PaymentService {
     }
 
     return parseInt(data.actionCode || data.orderStatus, 10);
+  }
+
+  /**
+   * Periodically checks all pending payments with Alfa-Bank
+   * and approves bookings if paid.
+   */
+  static async syncPaymentStatuses(): Promise<void> {
+    try {
+      const db = await getDb();
+      const pendingBookings = await db.all(`
+        SELECT * FROM bookings 
+        WHERE payment_status = 'pending' AND payment_order_id IS NOT NULL
+      `);
+
+      for (const booking of pendingBookings) {
+        try {
+          const status = await this.getOrderStatus(booking.payment_order_id);
+          
+          if (status === 2) {
+            // Paid
+            await db.run(
+              `UPDATE bookings SET payment_status = 'paid', status = 'approved' WHERE id = ?`,
+              [booking.id]
+            );
+
+            const cleanPhone = booking.customer_phone.replace(/\D/g, '');
+            const messengerLinks = [];
+            if (booking.customer_messenger === 'max') {
+              messengerLinks.push(`<a href="https://wa.me/${cleanPhone}">Написать в Макс</a>`);
+            }
+            if (booking.customer_tg_username) {
+              messengerLinks.push(`<a href="https://t.me/${booking.customer_tg_username.replace('@', '')}">Telegram: @${booking.customer_tg_username.replace('@', '')}</a>`);
+            }
+            const messengerInfo = messengerLinks.length > 0 ? `\n💬 ${messengerLinks.join(' | ')}` : ` (${booking.customer_messenger})`;
+
+            const message = `✅ <b>Бронь оплачена!</b>\n\n👤 ${booking.customer_name}\n📞 ${booking.customer_phone}${messengerInfo}\n\n📅 Даты: ${booking.start_date} - ${booking.end_date}\n⏰ Время: ${booking.pickup_time}\n🏄‍♂️ Количество: ${booking.quantity} шт.\n💳 Предоплата: ${booking.prepayment} ₽\n🆔 ${booking.id}`;
+
+            await NotificationService.enqueueNotification(booking.id, 'payment_received', message);
+            console.log(`[PaymentService] Booking ${booking.id} auto-approved via background sync.`);
+          } else if (status === 3 || status === 6) {
+            // Cancelled or rejected
+            await db.run(
+              `UPDATE bookings SET payment_status = 'failed', status = 'cancelled' WHERE id = ?`,
+              [booking.id]
+            );
+            console.log(`[PaymentService] Booking ${booking.id} auto-cancelled via background sync.`);
+          }
+        } catch (err: any) {
+          console.error(`[PaymentService] Failed to sync status for booking ${booking.id}:`, err.message);
+        }
+      }
+    } catch (err: any) {
+      console.error(`[PaymentService] Error in syncPaymentStatuses:`, err.message);
+    }
   }
 }

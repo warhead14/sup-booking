@@ -5,6 +5,8 @@ import { getDb } from './database/db';
 import { errorMiddleware } from './middlewares/error.middleware';
 import apiRoutes from './routes/api.routes';
 import adminRoutes from './routes/admin.routes';
+import { NotificationService } from './services/notification.service';
+import { PaymentService } from './services/payment.service';
 
 const app = express();
 
@@ -29,6 +31,15 @@ const startServer = async () => {
       console.log(`✅ Server running on all interfaces`);
       console.log(`✅ Local API: http://localhost:${config.port}/api`);
       console.log(`✅ Network API: http://172.29.209.177:${config.port}/api`);
+      
+      // Start background jobs
+      setInterval(() => {
+        NotificationService.processOutbox().catch(err => console.error('[Background] processOutbox error:', err));
+      }, 30 * 1000); // Every 30 seconds
+
+      setInterval(() => {
+        PaymentService.syncPaymentStatuses().catch(err => console.error('[Background] syncPaymentStatuses error:', err));
+      }, 2 * 60 * 1000); // Every 2 minutes
     });
   } catch (err) {
     console.error('❌ Failed to start server:', err);

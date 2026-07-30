@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { getDb } from '../database/db';
 import { AvailabilityService } from '../services/availability.service';
 import { createBookingSchema } from '../validators/booking.validator';
-import { sendTelegramNotification } from '../services/telegram.service';
+import { NotificationService } from '../services/notification.service';
 import { PaymentService } from '../services/payment.service';
 import { normalizePhone } from '../utils/phone';
 import crypto from 'crypto';
@@ -64,6 +64,19 @@ export class BookingController {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'payment_pending')`,
         [id, clientId, data.fullName, data.phone, data.messenger, data.tgUsername, data.startDate, data.endDate, data.pickupTime, data.quantity, data.totalPrice, data.prepayment]
       );
+
+      const cleanPhone = data.phone.replace(/\D/g, '');
+      const messengerLinks = [];
+      if (data.messenger === 'max') {
+        messengerLinks.push(`<a href="https://wa.me/${cleanPhone}">Написать в Макс</a>`);
+      }
+      if (data.tgUsername) {
+        messengerLinks.push(`<a href="https://t.me/${data.tgUsername.replace('@', '')}">Telegram: @${data.tgUsername.replace('@', '')}</a>`);
+      }
+      const messengerInfo = messengerLinks.length > 0 ? `\n💬 ${messengerLinks.join(' | ')}` : ` (${data.messenger})`;
+
+      const message = `🟡 <b>Новая заявка — ожидает оплаты</b>\n\n👤 ${data.fullName}\n📞 ${data.phone}${messengerInfo}\n\n📅 Даты: ${data.startDate} - ${data.endDate}\n⏰ Время: ${data.pickupTime}\n🏄‍♂️ Количество: ${data.quantity} шт.\n💰 Полная стоимость: ${data.totalPrice} ₽\n💳 Ожидаемая предоплата: ${data.prepayment} ₽\n🆔 ${id}`;
+      await NotificationService.enqueueNotification(id, 'application_created', message);
 
       // Initialize payment with Alfa-Bank
       const frontendUrl = process.env.FRONTEND_URL || 'https://supbooking.ru';
@@ -128,9 +141,9 @@ export class BookingController {
         
         const messengerInfo = messengerLinks.length > 0 ? `\n💬 ${messengerLinks.join(' | ')}` : ` (${booking.customer_messenger})`;
 
-        sendTelegramNotification(
-          `✅ <b>Бронь оплачена!</b>\n\n👤 ${booking.customer_name}\n📞 ${booking.customer_phone}${messengerInfo}\n\n📅 Даты: ${booking.start_date} - ${booking.end_date}\n⏰ Время: ${booking.pickup_time}\n🏄‍♂️ Количество: ${booking.quantity} шт.\n💳 Предоплата: ${booking.prepayment} ₽`
-        ).catch(err => console.error(err));
+        const message = `✅ <b>Бронь оплачена!</b>\n\n👤 ${booking.customer_name}\n📞 ${booking.customer_phone}${messengerInfo}\n\n📅 Даты: ${booking.start_date} - ${booking.end_date}\n⏰ Время: ${booking.pickup_time}\n🏄‍♂️ Количество: ${booking.quantity} шт.\n💳 Предоплата: ${booking.prepayment} ₽\n🆔 ${id}`;
+        
+        await NotificationService.enqueueNotification(id, 'payment_received', message);
 
         return res.json({ success: true, status: 'paid' });
       } else if (status === 3 || status === 6) {

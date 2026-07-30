@@ -21,12 +21,21 @@ export const sendTelegramNotification = async (message: string) => {
           parse_mode: 'HTML'
         });
 
-    await fetch(url, {
+    const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: body
     });
-  } catch (err) {
-    console.error('Failed to send telegram notification', err);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      // Omit tokens from error message just in case
+      throw new Error(`Telegram API Error: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+  } catch (err: any) {
+    // Avoid logging the token if it's in the error message
+    const safeError = err.message ? err.message.replace(config.telegram.botToken, '***') : 'Unknown error';
+    console.error('[TelegramService] Failed to send notification:', safeError);
+    throw err;
   }
 };
